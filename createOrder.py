@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 BAY2GAME_API_URL = "https://api.bay2game.xyz/api/create_order"
 BAY2GAME_API_KEY = "498185DF8D4C27DB67D5216A"
-USD_TO_LKR_RATE = 349.693
+DEFAULT_USD_TO_LKR_RATE = 355.8201058201058  # Default rate if database fails
 
 class OrderManager:
     """Manage order creation and processing"""
@@ -22,7 +22,19 @@ class OrderManager:
     def __init__(self):
         self.api_url = BAY2GAME_API_URL
         self.api_key = BAY2GAME_API_KEY
-        self.usd_rate = USD_TO_LKR_RATE
+        self.default_usd_rate = DEFAULT_USD_TO_LKR_RATE
+    
+    def get_usd_rate(self) -> float:
+        """
+        Get USD to LKR rate from database
+        If not available, use default rate
+        """
+        try:
+            rate = db.get_usd_to_lkr_rate()
+            return rate
+        except Exception as e:
+            logger.warning(f"Could not get USD rate from database: {e}, using default: {self.default_usd_rate}")
+            return self.default_usd_rate
     
     def generate_order_id(self) -> str:
         """Generate unique order ID"""
@@ -37,8 +49,17 @@ class OrderManager:
         return f"REF{timestamp}{random_num}"
     
     def convert_usd_to_lkr(self, usd_price: float) -> float:
-        """Convert USD to LKR"""
-        return round(usd_price * self.usd_rate, 2)
+        """
+        Convert USD to LKR using database rate
+        
+        Args:
+            usd_price: Price in USD
+        
+        Returns:
+            Price in LKR (rounded to 2 decimal places)
+        """
+        rate = self.get_usd_rate()
+        return round(usd_price * rate, 2)
     
     async def check_user_balance(self, user_id: int, product_price_lkr: float) -> Tuple[bool, float, str]:
         """
@@ -180,7 +201,7 @@ class OrderManager:
         """
         order_id = self.generate_order_id()
         
-        # Convert USD to LKR
+        # Convert USD to LKR using database rate
         amount_lkr = self.convert_usd_to_lkr(amount_usd)
         
         # Get user before deduction
@@ -214,7 +235,8 @@ class OrderManager:
             "apiBalanceAfter": api_response.get("balance_after", 0),
             "createdAt": db.get_current_time(),
             "completedAt": api_response.get("completed_at") or db.get_current_time() if is_success else None,
-            "rawResponse": api_response
+            "rawResponse": api_response,
+            "rateUsed": self.get_usd_rate()  # Store which rate was used
         }
         
         # Insert into database
@@ -231,6 +253,7 @@ class OrderManager:
             if update_result:
                 logger.info(f"✅ Order {order_id} completed. Deducted {amount_lkr:.2f} LKR from user {user_id}")
                 logger.info(f"💰 Balance: {balance_before:.2f} → {balance_after:.2f} LKR")
+                logger.info(f"📊 Rate used: {self.get_usd_rate()}")
             else:
                 logger.error(f"❌ Failed to deduct balance for order {order_id}")
                 # Update order status to failed if balance deduction failed
@@ -268,6 +291,10 @@ class OrderManager:
         Returns:
             Dict with order result
         """
+        # Get current rate for logging
+        current_rate = self.get_usd_rate()
+        logger.info(f"💰 Using USD to LKR rate: {current_rate}")
+        
         # 1. Check if user exists and has balance
         price_lkr = self.convert_usd_to_lkr(price_usd)
         has_balance, current_balance, balance_msg = await self.check_user_balance(
@@ -419,6 +446,10 @@ async def test_order_creation():
     print("🔄 Testing Order Creation")
     print("=" * 50)
     
+    # Get current rate
+    rate = order_manager.get_usd_rate()
+    print(f"💰 Current USD to LKR Rate: {rate}")
+    
     # Test data - using correct product codes
     test_user_id = 123456789
     test_product_code = "FREEFIRE_SG_25"
@@ -429,7 +460,8 @@ async def test_order_creation():
     print(f"├ User ID: {test_user_id}")
     print(f"├ Product Code: {test_product_code}")
     print(f"├ Player ID: {test_player_id}")
-    print(f"└ Price: ${test_price_usd}")
+    print(f"├ Price: ${test_price_usd}")
+    print(f"└ Rate: {rate}")
     
     print("\n⏳ Processing order...")
     
@@ -450,6 +482,7 @@ async def test_order_creation():
         print(f"├ Status: {order.get('status')}")
         print(f"├ Balance Before: Rs. {order.get('balanceBefore', 0):,.2f}")
         print(f"├ Balance After: Rs. {order.get('balanceAfter', 0):,.2f}")
+        print(f"├ Rate Used: {order.get('rateUsed', 'N/A')}")
         print(f"└ Reference: {order.get('reference')}")
     else:
         print(f"❌ Order failed: {result.get('error')}")
