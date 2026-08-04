@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 BAY2GAME_API_URL = "https://api.bay2game.xyz/api/products"
 BAY2GAME_API_KEY = "498185DF8D4C27DB67D5216A"
-DEFAULT_USD_TO_LKR_RATE = 349.69  # Default USD to LKR conversion rate
 
 # Allowed products - only these will be shown
 ALLOWED_PRODUCTS = [
@@ -29,49 +28,191 @@ ALLOWED_PRODUCTS = [
     "FREEFIRE_SG_Monthly_Membership"
 ]
 
+# ──────────────────────────────
+# DEFAULT PRICES (LKR ONLY) - Used when database is empty
+# ──────────────────────────────
+
+# Default Admin Prices
+DEFAULT_ADMIN_PRICES = {
+    "FREEFIRE_SG_Weekly_Lite": 120,
+    "FREEFIRE_SG_Weekly_Membership": 560,
+    "FREEFIRE_SG_Monthly_Membership": 2650,
+    "FREEFIRE_SG_25": 100,
+    "FREEFIRE_SG_100": 286,
+    "FREEFIRE_SG_310": 880,
+    "FREEFIRE_SG_520": 1340,
+    "FREEFIRE_SG_1060": 2650,
+    "FREEFIRE_SG_2180": 5450,
+    "FREEFIRE_SG_5600": 12900,
+    "FREEFIRE_SG_11500": 25900
+}
+
+# Default Customer Prices
+DEFAULT_CUSTOMER_PRICES = {
+    "FREEFIRE_SG_Weekly_Lite": 135,
+    "FREEFIRE_SG_Weekly_Membership": 575,
+    "FREEFIRE_SG_Monthly_Membership": 2750,
+    "FREEFIRE_SG_25": 120,
+    "FREEFIRE_SG_100": 300,
+    "FREEFIRE_SG_310": 940,
+    "FREEFIRE_SG_520": 1420,
+    "FREEFIRE_SG_1060": 2710,
+    "FREEFIRE_SG_2180": 5540,
+    "FREEFIRE_SG_5600": 13100,
+    "FREEFIRE_SG_11500": 26200
+}
+
+# Product display names
+PRODUCT_DISPLAY_NAMES = {
+    "FREEFIRE_SG_Weekly_Lite": "Weekly Lite",
+    "FREEFIRE_SG_Weekly_Membership": "Weekly Membership",
+    "FREEFIRE_SG_Monthly_Membership": "Monthly Membership",
+    "FREEFIRE_SG_25": "25",
+    "FREEFIRE_SG_100": "100",
+    "FREEFIRE_SG_310": "310",
+    "FREEFIRE_SG_520": "520",
+    "FREEFIRE_SG_1060": "1060",
+    "FREEFIRE_SG_2180": "2180",
+    "FREEFIRE_SG_5600": "5600",
+    "FREEFIRE_SG_11500": "11500"
+}
+
+# Product codes for /id command (short codes)
+PRODUCT_CODE_SHORT = {
+    "weekly": "FREEFIRE_SG_Weekly_Membership",
+    "weekly_lite": "FREEFIRE_SG_Weekly_Lite",
+    "monthly": "FREEFIRE_SG_Monthly_Membership",
+    "25": "FREEFIRE_SG_25",
+    "100": "FREEFIRE_SG_100",
+    "310": "FREEFIRE_SG_310",
+    "520": "FREEFIRE_SG_520",
+    "1060": "FREEFIRE_SG_1060",
+    "2180": "FREEFIRE_SG_2180",
+    "5600": "FREEFIRE_SG_5600",
+    "11500": "FREEFIRE_SG_11500"
+}
+
 class ProductManager:
     """Manage products from Bay2Game API"""
     
     def __init__(self):
         self.api_url = BAY2GAME_API_URL
         self.api_key = BAY2GAME_API_KEY
-        self.default_usd_rate = DEFAULT_USD_TO_LKR_RATE
         self.allowed_products = ALLOWED_PRODUCTS
+        self.default_admin_prices = DEFAULT_ADMIN_PRICES
+        self.default_customer_prices = DEFAULT_CUSTOMER_PRICES
+        self.display_names = PRODUCT_DISPLAY_NAMES
+        self.short_codes = PRODUCT_CODE_SHORT
         self.cache = {
-            "products": [],
+            "products": None,
             "last_updated": None
         }
         self.cache_duration = 300  # 5 minutes cache
+        self._price_cache = {
+            "admin": {},
+            "customer": {},
+            "last_updated": None
+        }
+        self.price_cache_duration = 60  # 1 minute cache for prices
     
-    def get_usd_rate(self) -> float:
+    def _get_admin_prices_from_db(self) -> dict:
+        """Get admin prices from database"""
+        try:
+            from database import db
+            return db.get_all_admin_prices()
+        except Exception as e:
+            logger.warning(f"Could not get admin prices from database: {e}, using defaults")
+            return {}
+    
+    def _get_customer_prices_from_db(self) -> dict:
+        """Get customer prices from database"""
+        try:
+            from database import db
+            return db.get_all_customer_prices()
+        except Exception as e:
+            logger.warning(f"Could not get customer prices from database: {e}, using defaults")
+            return {}
+    
+    def _get_prices_from_db(self, is_admin: bool) -> dict:
+        """Get prices from database with caching"""
+        # Check cache
+        if self._price_cache["last_updated"]:
+            cache_age = (datetime.now() - self._price_cache["last_updated"]).total_seconds()
+            if cache_age < self.price_cache_duration:
+                if is_admin:
+                    return self._price_cache.get("admin", {})
+                else:
+                    return self._price_cache.get("customer", {})
+        
+        # Fetch from database
+        if is_admin:
+            db_prices = self._get_admin_prices_from_db()
+        else:
+            db_prices = self._get_customer_prices_from_db()
+        
+        # Merge with defaults (database prices override defaults)
+        if is_admin:
+            default_prices = self.default_admin_prices.copy()
+        else:
+            default_prices = self.default_customer_prices.copy()
+        
+        # Update defaults with database prices
+        default_prices.update(db_prices)
+        
+        # Update cache
+        self._price_cache["admin"] = self._get_admin_prices_from_db() if is_admin else self._price_cache.get("admin", {})
+        self._price_cache["customer"] = self._get_customer_prices_from_db() if not is_admin else self._price_cache.get("customer", {})
+        self._price_cache["last_updated"] = datetime.now()
+        
+        return default_prices
+    
+    def get_product_price(self, product_code: str, user_id: int) -> float:
         """
-        Get USD to LKR rate from database
-        If not available, use default rate
+        Get product price based on user role from database
+        
+        Args:
+            product_code: Product code
+            user_id: Telegram user ID
+        
+        Returns:
+            Price in LKR
         """
         try:
             from database import db
-            rate = db.get_usd_to_lkr_rate()
-            return rate
+            
+            # Check if user is admin
+            user = db.get_user(user_id)
+            is_admin = user.get("isAdmin", False) if user else False
+            
+            # Get price from database
+            if is_admin:
+                price = db.get_admin_price(product_code)
+                # If not found in database, use default
+                if price == 0:
+                    price = self.default_admin_prices.get(product_code, 0)
+                return price
+            else:
+                price = db.get_customer_price(product_code)
+                if price == 0:
+                    price = self.default_customer_prices.get(product_code, 0)
+                return price
+                
         except Exception as e:
-            logger.warning(f"Could not get USD rate from database: {e}, using default: {self.default_usd_rate}")
-            return self.default_usd_rate
+            logger.warning(f"Could not get price from database: {e}, using defaults")
+            # Fallback to defaults
+            return self.default_admin_prices.get(product_code, 0)
     
-    def convert_price_to_lkr(self, usd_price: float) -> float:
-        """
-        Convert USD price to LKR using database rate
-        
-        Args:
-            usd_price: Price in USD
-        
-        Returns:
-            Price in LKR (rounded to 2 decimal places)
-        """
-        rate = self.get_usd_rate()
-        return round(usd_price * rate, 2)
+    def get_product_display_name(self, product_code: str) -> str:
+        """Get display name for product"""
+        return self.display_names.get(product_code, product_code)
+    
+    def get_product_code_from_short(self, short_code: str) -> Optional[str]:
+        """Get full product code from short code"""
+        return self.short_codes.get(short_code.lower())
     
     async def fetch_products(self, game_code: str = "freefire_sg") -> Dict:
         """
-        Fetch products from Bay2Game API
+        Fetch products from Bay2Game API (only for product IDs and status)
         
         Args:
             game_code: Game code (default: freefire_sg)
@@ -115,15 +256,16 @@ class ProductManager:
         """
         return product_code in self.allowed_products
     
-    def format_products(self, api_response: Dict) -> Dict:
+    def format_products(self, api_response: Dict, user_id: int = None) -> Dict:
         """
         Format products from API response - filter only allowed products
         
         Args:
             api_response: Raw API response
+            user_id: User ID for price calculation
         
         Returns:
-            Formatted products with LKR prices (filtered)
+            Formatted products with prices (filtered)
         """
         if api_response.get("status") != "success":
             return {
@@ -139,10 +281,6 @@ class ProductManager:
         formatted_products = []
         skipped_products = []
         
-        # Get current rate for logging
-        current_rate = self.get_usd_rate()
-        logger.info(f"💰 Using USD to LKR rate: {current_rate}")
-        
         for product in products_raw:
             product_code = product.get("product_code", "")
             
@@ -151,16 +289,22 @@ class ProductManager:
                 skipped_products.append(product_code)
                 continue
             
-            usd_price = product.get("sell_price", 0)
-            lkr_price = self.convert_price_to_lkr(usd_price)
+            # Get price based on user role from database
+            if user_id:
+                price_lkr = self.get_product_price(product_code, user_id)
+            else:
+                # Default to customer price if no user_id
+                price_lkr = self.default_customer_prices.get(product_code, 0)
+            
+            # Get display name
+            display_name = self.get_product_display_name(product_code)
             
             formatted_products.append({
                 "id": product.get("id"),
                 "product_code": product_code,
-                "name": product.get("name"),
-                "sell_price_usd": usd_price,
-                "sell_price_lkr": lkr_price,
-                "display_price": f"${usd_price:.2f} (Rs. {lkr_price:,.2f})",
+                "name": display_name,
+                "sell_price_lkr": price_lkr,
+                "display_price": f"Rs. {price_lkr:,.0f}",
                 "status": product.get("status"),
                 "supplier_type": product.get("supplier_type"),
                 "raw": product  # Keep raw data for reference
@@ -171,6 +315,9 @@ class ProductManager:
         
         # Sort products by price (low to high)
         formatted_products.sort(key=lambda x: x.get("sell_price_lkr", 0))
+        
+        # Get user role for display
+        user_role = "Admin" if user_id and self._is_user_admin(user_id) else "Customer"
         
         return {
             "status": "success",
@@ -184,22 +331,32 @@ class ProductManager:
             "products": formatted_products,
             "total_products": len(formatted_products),
             "skipped_products": skipped_products,
-            "usd_rate_used": self.get_usd_rate()  # Include rate used for reference
+            "user_role": user_role
         }
     
-    async def get_products(self, game_code: str = "freefire_sg", force_refresh: bool = False) -> Dict:
+    def _is_user_admin(self, user_id: int) -> bool:
+        """Check if user is admin"""
+        try:
+            from database import db
+            user = db.get_user(user_id)
+            return user.get("isAdmin", False) if user else False
+        except:
+            return False
+    
+    async def get_products(self, game_code: str = "freefire_sg", user_id: int = None, force_refresh: bool = False) -> Dict:
         """
         Get products with caching - only allowed products
         
         Args:
             game_code: Game code
+            user_id: User ID for price calculation
             force_refresh: Force refresh cache
         
         Returns:
-            Formatted products with LKR prices (filtered)
+            Formatted products with prices (filtered)
         """
         # Check cache
-        if not force_refresh and self.cache["products"] and self.cache["last_updated"]:
+        if not force_refresh and self.cache["products"] is not None and self.cache["last_updated"]:
             cache_age = (datetime.now() - self.cache["last_updated"]).total_seconds()
             if cache_age < self.cache_duration:
                 logger.info("Returning cached products")
@@ -208,7 +365,7 @@ class ProductManager:
         # Fetch from API
         logger.info(f"Fetching products for game: {game_code}")
         api_response = await self.fetch_products(game_code)
-        formatted = self.format_products(api_response)
+        formatted = self.format_products(api_response, user_id)
         
         # Update cache
         if formatted.get("status") == "success":
@@ -217,25 +374,48 @@ class ProductManager:
         
         return formatted
     
-    def get_product_by_id(self, product_id: int) -> Optional[Dict]:
-        """Get product by ID from cache"""
-        products = self.cache["products"].get("products", [])
+    def get_product_by_id(self, product_id: int, user_id: int = None) -> Optional[Dict]:
+        """Get product by ID from cache with user-specific price"""
+        products_data = self.cache["products"]
+        if not products_data:
+            return None
+        
+        products = products_data.get("products", [])
         for product in products:
             if product.get("id") == product_id:
+                # If user_id provided, update price based on role from database
+                if user_id:
+                    product_code = product.get("product_code")
+                    price_lkr = self.get_product_price(product_code, user_id)
+                    product["sell_price_lkr"] = price_lkr
+                    product["display_price"] = f"Rs. {price_lkr:,.0f}"
                 return product
         return None
     
-    def get_product_by_code(self, product_code: str) -> Optional[Dict]:
-        """Get product by product code from cache"""
-        products = self.cache["products"].get("products", [])
+    def get_product_by_code(self, product_code: str, user_id: int = None) -> Optional[Dict]:
+        """Get product by product code from cache with user-specific price"""
+        products_data = self.cache["products"]
+        if not products_data:
+            return None
+        
+        products = products_data.get("products", [])
         for product in products:
             if product.get("product_code") == product_code:
+                # If user_id provided, update price based on role from database
+                if user_id:
+                    price_lkr = self.get_product_price(product_code, user_id)
+                    product["sell_price_lkr"] = price_lkr
+                    product["display_price"] = f"Rs. {price_lkr:,.0f}"
                 return product
         return None
     
     def search_products(self, query: str) -> List[Dict]:
         """Search products by name or code"""
-        products = self.cache["products"].get("products", [])
+        products_data = self.cache["products"]
+        if not products_data:
+            return []
+        
+        products = products_data.get("products", [])
         query_lower = query.lower()
         
         results = []
@@ -248,7 +428,11 @@ class ProductManager:
     
     def get_products_by_price_range(self, min_price: float, max_price: float) -> List[Dict]:
         """Get products within price range (LKR)"""
-        products = self.cache["products"].get("products", [])
+        products_data = self.cache["products"]
+        if not products_data:
+            return []
+        
+        products = products_data.get("products", [])
         
         results = []
         for product in products:
@@ -260,8 +444,16 @@ class ProductManager:
     
     def get_active_products(self) -> List[Dict]:
         """Get only active products"""
-        products = self.cache["products"].get("products", [])
+        products_data = self.cache["products"]
+        if not products_data:
+            return []
+        
+        products = products_data.get("products", [])
         return [p for p in products if p.get("status") == "active"]
+    
+    def refresh_prices(self) -> None:
+        """Force refresh price cache"""
+        self._price_cache["last_updated"] = None
 
 # ──────────────────────────────
 # Singleton instance
@@ -273,13 +465,13 @@ product_manager = ProductManager()
 # Utility Functions (for bot use)
 # ──────────────────────────────
 
-async def get_game_products(game_code: str = "freefire_sg") -> Dict:
-    """Get products for a specific game"""
-    return await product_manager.get_products(game_code)
+async def get_game_products(game_code: str = "freefire_sg", user_id: int = None) -> Dict:
+    """Get products for a specific game with user-specific prices"""
+    return await product_manager.get_products(game_code, user_id)
 
-async def get_freefire_products() -> Dict:
-    """Get FreeFire SG products specifically (filtered)"""
-    return await product_manager.get_products("freefire_sg")
+async def get_freefire_products(user_id: int = None) -> Dict:
+    """Get FreeFire SG products specifically (filtered) with user-specific prices"""
+    return await product_manager.get_products("freefire_sg", user_id)
 
 def format_products_for_display(products_data: Dict, limit: int = 20) -> str:
     """
@@ -297,33 +489,46 @@ def format_products_for_display(products_data: Dict, limit: int = 20) -> str:
     
     game = products_data.get("game", {})
     products = products_data.get("products", [])
+    user_role = products_data.get("user_role", "Customer")
     
     if not products:
         return "📦 No products available for this game."
     
     text = f"🎮 **{game.get('name', 'Game')} Products**\n"
-    text += f"📊 Total: {len(products)} products\n"
+    text += f"👤 Role: {user_role}\n"
+    text += f"📊 Total: {len(products)} products\n\n"
     
-    # Show rate used
-    rate_used = products_data.get("usd_rate_used")
-    if rate_used:
-        text += f"💰 Rate: 1 USD = {rate_used:.2f} LKR\n"
+    # Separate products
+    diamond_products = []
+    membership_products = []
     
-    text += f"\n"
+    for product in products:
+        name = product.get('name', '').lower()
+        if 'weekly' in name or 'monthly' in name or 'membership' in name:
+            membership_products.append(product)
+        else:
+            diamond_products.append(product)
     
-    # Show first few products
-    display_products = products[:limit]
-    for product in display_products:
-        text += (
-            f"├ 🆔 {product.get('id')}\n"
-            f"├ 📝 {product.get('name')}\n"
-            f"├ 💰 {product.get('display_price')}\n"
-            f"├ 📦 {product.get('supplier_type', 'N/A').upper()}\n"
-            f"└ {'✅ Active' if product.get('status') == 'active' else '❌ Inactive'}\n\n"
-        )
+    # Membership products
+    if membership_products:
+        text += "🔹 *Subscriptions*\n"
+        for p in membership_products:
+            name = p.get('name', 'Unknown')
+            price = p.get('sell_price_lkr', 0)
+            text += f"- {name} ⇒ `{price:.0f}` LKR\n"
+        text += "\n"
     
-    if len(products) > limit:
-        text += f"_... and {len(products) - limit} more products_"
+    # Diamond products
+    if diamond_products:
+        text += "🔹 *Diamond Packages*\n"
+        for p in diamond_products[:limit]:
+            name = p.get('name', 'Unknown')
+            price = p.get('sell_price_lkr', 0)
+            text += f"- {name} ⇒ `{price:.0f}` LKR\n"
+    
+    text += "\n━━━━━━━━━━━━━━━\n"
+    text += "✅ Easy | Fast | Secure\n"
+    text += "📌 Example: /id 4507576164 25 2"
     
     return text
 
@@ -333,7 +538,7 @@ def format_product_for_inline_button(product: Dict) -> str:
     """
     name = product.get('name', 'Unknown')
     price = product.get('sell_price_lkr', 0)
-    return f"{name} - Rs. {price:,.2f}"
+    return f"{name} - Rs. {price:,.0f}"
 
 def create_product_keyboard(products_data: Dict, max_buttons: int = 10) -> List[List]:
     """
@@ -368,40 +573,42 @@ def create_product_keyboard(products_data: Dict, max_buttons: int = 10) -> List[
 async def test_products():
     """Test function to fetch and display products"""
     print("=" * 50)
-    print("🔄 Fetching FreeFire products...")
-    print(f"📋 Allowed Products: {len(ALLOWED_PRODUCTS)}")
+    print("🔄 Testing Products with Role-Based Pricing")
     print("=" * 50)
     
-    result = await get_freefire_products()
+    # Test as Customer (no user_id)
+    print("\n📋 Customer Prices (from database):")
+    customer_result = await get_freefire_products()
     
-    if result.get("status") == "success":
-        game = result.get("game")
-        products = result.get("products")
-        skipped = result.get("skipped_products", [])
-        rate_used = result.get("usd_rate_used", "Unknown")
-        
-        print(f"\n✅ Game: {game.get('name')}")
-        print(f"📊 Total Products Found: {len(products)}")
-        print(f"⏭️ Skipped Products: {len(skipped)}")
-        print(f"💰 USD to LKR Rate: {rate_used}")
-        print("\n📦 Allowed Products:")
-        
-        for i, product in enumerate(products, 1):
-            print(f"\n{i}. Product: {product.get('name')}")
-            print(f"   ├ Code: {product.get('product_code')}")
-            print(f"   ├ USD: ${product.get('sell_price_usd'):.2f}")
-            print(f"   ├ LKR: Rs. {product.get('sell_price_lkr'):,.2f}")
-            print(f"   ├ ID: {product.get('id')}")
-            print(f"   └ Status: {product.get('status')}")
-        
-        if skipped:
-            print(f"\n⏭️ Skipped Products ({len(skipped)}):")
-            for code in skipped[:10]:
-                print(f"   └ {code}")
-            if len(skipped) > 10:
-                print(f"   ... and {len(skipped) - 10} more")
-    else:
-        print(f"❌ Error: {result.get('message')}")
+    if customer_result.get("status") == "success":
+        products = customer_result.get("products", [])
+        print(f"\n✅ Role: {customer_result.get('user_role', 'Customer')}")
+        print(f"📊 Total Products: {len(products)}")
+        print("\n📦 Products:")
+        for product in products:
+            print(f"\n├ {product.get('name')}")
+            print(f"├ Price: Rs. {product.get('sell_price_lkr', 0):,.0f}")
+            print(f"└ Code: {product.get('product_code')}")
+    
+    print("\n" + "=" * 50)
+    
+    # Try to get a specific product price
+    print("\n🔍 Testing get_product_price:")
+    try:
+        from database import db
+        # Get a test user (first user from database)
+        test_user = db.users.find_one({})
+        if test_user:
+            user_id = test_user.get("userId")
+            is_admin = test_user.get("isAdmin", False)
+            price = product_manager.get_product_price("FREEFIRE_SG_25", user_id)
+            print(f"├ User ID: {user_id}")
+            print(f"├ Is Admin: {is_admin}")
+            print(f"└ Price for FREEFIRE_SG_25: Rs. {price:,.0f}")
+        else:
+            print("No users found in database")
+    except Exception as e:
+        print(f"Error: {e}")
 
 # ──────────────────────────────
 # Main (for testing)
