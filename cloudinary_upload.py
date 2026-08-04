@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 # Cloudinary Config
 # ──────────────────────────────
 
-CLOUDINARY_CLOUD_NAME = "dqlh378fb"
-CLOUDINARY_API_KEY = "762638296874182"
-CLOUDINARY_API_SECRET = "TubYkMp4RRNsVyiLudssYcTVWDY"
+CLOUDINARY_CLOUD_NAME = "plcp6wzk"
+CLOUDINARY_API_KEY = "797775732669259"
+CLOUDINARY_API_SECRET = "qHfPTygX-eWfixzygJpWDAxyVes"
 
 # Configure Cloudinary
 cloudinary.config(
