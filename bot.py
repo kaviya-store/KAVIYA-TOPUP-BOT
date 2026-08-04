@@ -147,7 +147,7 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     rate = products_data.get("usd_rate_used", 349.69)
     
-    text = "✨ Zanta Store Products (LKR) ✨\n"
+    text = "✨ 𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫💎✨\n"
     text += "━━━━━━━━━━━━━━━\n\n"
     
     if membership_products:
@@ -729,9 +729,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db_user = db.get_user(user.id)
     
     welcome_text = (
-        "║💎     🎮 ZANTA TOPUP BOT      💎║\n\n"
+        "║💎  𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫  💎║\n\n"
         f"👋 Hey {user.first_name}!\n"
-        "🎉 Welcome to Zanta TopUp Bot!\n\n"
+        "🎉 Welcome to 𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫!\n\n"
         "📱 Your Account Details:\n"
         f"├ 🆔 ID: {user.id}\n"
         f"├ 👤 Name: {user.first_name}\n"
@@ -971,7 +971,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     
     print("=" * 50)
-    print("🤖 Zanta TopUp Bot is running...")
+    print("🤖 TopUp Bot is running...")
     print("📊 MongoDB: Connected")
     print("🎮 Bay2Game API: Connected")
     print("☁️ Cloudinary: Connected")
