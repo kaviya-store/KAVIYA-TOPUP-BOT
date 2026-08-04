@@ -11,7 +11,7 @@ class Database:
     def __init__(self):
         try:
             self.client = MongoClient(MONGODB_URI)
-            self.db = self.client["zanta_topup_bot"]
+            self.db = self.client["Project0"]
             
             # Create collections
             self.users = self.db["users"]
@@ -110,7 +110,7 @@ class Database:
         from datetime import datetime
         import random
         
-        order_id = f"ZANTA{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}"
+        order_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}"
         
         new_order = {
             "orderId": order_id,
