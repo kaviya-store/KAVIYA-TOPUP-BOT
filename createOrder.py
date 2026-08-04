@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────
 
 BAY2GAME_API_URL = "https://api.bay2game.xyz/api/create_order"
-BAY2GAME_API_KEY = "71E3B414467AA218EA9EA3CC"
+BAY2GAME_API_KEY = "498185DF8D4C27DB67D5216A"
 USD_TO_LKR_RATE = 349.693
 
 class OrderManager:
