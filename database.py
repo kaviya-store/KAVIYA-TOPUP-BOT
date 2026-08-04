@@ -11,7 +11,7 @@ class Database:
     def __init__(self):
         try:
             self.client = MongoClient(MONGODB_URI)
-            self.db = self.client["Project0"]
+            self.db = self.client["kaviya_topup_bot"]
             
             # Create collections
             self.users = self.db["users"]
