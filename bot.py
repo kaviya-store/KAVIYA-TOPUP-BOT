@@ -439,9 +439,9 @@ async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Minimum: {min_deposit} LKR\n"
         f"💰 Maximum: {max_deposit} LKR\n\n"
         "📋 Payment Methods:\n"
-        "├ 📱 EZ Cash - 0766247995\n"
-        "├ 🏦 Bank Transfer - 71782008\n"
-        "└ 👤 Name: DKN DILRUKSHI\n\n"
+        "├ 📱 EZ Cash - 0768747350\n"
+        "├ 🏦 Bank Transfer - 2052001220060817\n"
+        "└ 👤 Name: B.G.S KUMARI\n\n"
         "📷 Send screenshot of your payment"
     )
     
