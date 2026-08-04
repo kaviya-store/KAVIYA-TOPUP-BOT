@@ -108,7 +108,7 @@ def get_game_code(product_code: str) -> str:
     return GAME_CODE_DISPLAY.get(product_code, product_code)
 
 # ──────────────────────────────
-# Store Command
+# Store Command - UPDATED with user_id for pricing
 # ──────────────────────────────
 
 async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -117,7 +117,10 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔄 Loading products... Please wait."
     )
     
-    products_data = await get_freefire_products()
+    user_id = update.effective_user.id
+    
+    # Get products with user-specific prices
+    products_data = await get_freefire_products(user_id=user_id)
     
     if products_data.get("status") != "success":
         await loading_msg.edit_text(
@@ -145,9 +148,11 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     diamond_products.sort(key=lambda x: x.get('sell_price_lkr', 0))
     membership_products.sort(key=lambda x: x.get('sell_price_lkr', 0))
     
-    rate = products_data.get("usd_rate_used", 349.69)
+    # Get user role
+    user_role = products_data.get("user_role", "Customer")
     
     text = "✨ 𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫💎✨\n"
+    text += f"👤 Role: {user_role}\n"
     text += "━━━━━━━━━━━━━━━\n\n"
     
     if membership_products:
@@ -174,7 +179,7 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await loading_msg.edit_text(text)
 
 # ──────────────────────────────
-# Topup Command
+# Topup Command - UPDATED with user-specific prices
 # ──────────────────────────────
 
 async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -238,11 +243,12 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
     
-    product = product_manager.get_product_by_code(product_code)
+    # Get product with user-specific price
+    product = product_manager.get_product_by_code(product_code, user_id)
     if not product:
-        products_data = await get_freefire_products()
+        products_data = await get_freefire_products(user_id)
         if products_data.get("status") == "success":
-            product = product_manager.get_product_by_code(product_code)
+            product = product_manager.get_product_by_code(product_code, user_id)
     
     if not product:
         await update.message.reply_text(
@@ -334,7 +340,7 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # ──────────────────────────────
-# Confirm Topup Callback
+# Confirm Topup Callback - UPDATED
 # ──────────────────────────────
 
 async def confirm_topup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -363,7 +369,8 @@ async def confirm_topup_callback(update: Update, context: ContextTypes.DEFAULT_T
     success_orders = []
     failed_count = 0
     
-    product_obj = product_manager.get_product_by_code(product_code)
+    # Get product with user-specific price
+    product_obj = product_manager.get_product_by_code(product_code, user_id)
     if not product_obj:
         await query.message.edit_text(
             "❌ Product not found. Please try again."
@@ -440,8 +447,7 @@ async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Maximum: {max_deposit} LKR\n\n"
         "📋 Payment Methods:\n"
         "├ 📱 EZ Cash - 0768747350\n"
-        "├ 🏦 Bank Transfer - 2052001220060817\n"
-        "└ 👤 Name: B.G.S KUMARI\n\n"
+        "├ 🏦 Binance - 774894425\n\n"
         "📷 Send screenshot of your payment"
     )
     
@@ -572,7 +578,7 @@ async def method_selection_callback(update: Update, context: ContextTypes.DEFAUL
     return ConversationHandler.END
 
 # ──────────────────────────────
-# NOTIFY ADMINS - FIXED
+# NOTIFY ADMINS
 # ──────────────────────────────
 
 async def notify_admins(context, deposit):
@@ -596,7 +602,7 @@ async def notify_admins(context, deposit):
     )
     
     admin_count = 0
-    admin_list = list(admins)  # ← මෙය "admins" විය යුතුයි, "adults" නොවේ
+    admin_list = list(admins)
     logger.info(f"👥 Found {len(admin_list)} admin(s)")
     
     for admin in admin_list:
@@ -608,9 +614,7 @@ async def notify_admins(context, deposit):
             )
             
             # ─── Send deposit ID separately (for easy copying) ───
-            id_text = (
-                f"{deposit_id}"
-            )
+            id_text = f"{deposit_id}"
             
             await context.bot.send_message(
                 chat_id=admin['userId'],
@@ -618,9 +622,11 @@ async def notify_admins(context, deposit):
             )
             
             admin_count += 1
+            logger.info(f"✅ Admin notification sent to {admin['userId']}")
         except Exception as e:
             logger.error(f"❌ Failed to notify admin {admin['userId']}: {e}")
-
+    
+    logger.info(f"📨 Deposit notification sent to {admin_count} admin(s)")
 
 # ──────────────────────────────
 # CANCEL DEPOSIT
@@ -673,6 +679,7 @@ async def approve_deposit_command(update: Update, context: ContextTypes.DEFAULT_
         )
     else:
         await update.message.reply_text(f"❌ {message}")
+
 # ──────────────────────────────
 # ADMIN REJECT COMMAND
 # ──────────────────────────────
@@ -740,7 +747,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"└ 📅 Joined: {db_user['createdAt'][:10]}\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "📌 Available Commands:\n"
-        "├ /profile\n"
+        "├ /wallet\n"
         "├ /products\n"
         "├ /id\n"
         "├ /deposit\n"
@@ -753,11 +760,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome_text)
 
 # ──────────────────────────────
-# PROFILE COMMAND
+# WALLET/PROFILE COMMAND
 # ──────────────────────────────
 
-async def profile_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show user profile"""
+async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show user wallet/profile"""
     user_id = update.effective_user.id
     db_user = db.get_user(user_id)
     
@@ -953,11 +960,12 @@ def main():
     
     # ── Command Handlers ──
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("wallet", profile_command))
+    app.add_handler(CommandHandler("wallet", wallet_command))
     app.add_handler(CommandHandler("products", store_command))
     app.add_handler(CommandHandler("id", topup_command))
     app.add_handler(CommandHandler("orders", orders_command))
     app.add_handler(CommandHandler("history", history_command))
+    app.add_handler(CommandHandler("deposit", deposit_command))
     
     # ── Admin Commands ──
     app.add_handler(CommandHandler("addbalance", add_balance_command))
@@ -980,7 +988,7 @@ def main():
     print("✅ Bot is ready! Press Ctrl+C to stop.")
     print("=" * 50)
     print("\n📌 Available Commands:")
-    print("  /profile     - View profile")
+    print("  /wallet      - View wallet/profile")
     print("  /products    - View products")
     print("  /id          - Buy products")
     print("  /deposit     - Deposit money (send screenshot)")
