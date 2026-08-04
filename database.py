@@ -18,20 +18,77 @@ class Database:
             self.orders = self.db["orders"]
             self.deposits = self.db["deposits"]
             self.config = self.db["config"]
+            self.admin_prices = self.db["admin_prices"]  # New collection
+            self.customer_prices = self.db["customer_prices"]  # New collection
             
-            # Create indexes
-            self.users.create_index("userId", unique=True)
-            self.orders.create_index("orderId", unique=True)
-            self.orders.create_index("userId")
-            self.deposits.create_index("userId")
-            self.deposits.create_index("status")
-            self.config.create_index("key", unique=True)
+            # Create indexes safely
+            self._create_indexes()
             
             print("✅ MongoDB Connected Successfully!")
             
         except Exception as e:
             print(f"❌ MongoDB Connection Error: {e}")
             raise
+
+    def _create_indexes(self):
+        """Create indexes safely - skip if they already exist"""
+        try:
+            # Users indexes
+            existing_indexes = self.users.index_information()
+            if "userId_1" not in existing_indexes:
+                self.users.create_index("userId", unique=True)
+            else:
+                print("ℹ️ Index userId_1 already exists, skipping...")
+            
+            # Orders indexes
+            existing_orders_indexes = self.orders.index_information()
+            if "orderId_1" not in existing_orders_indexes:
+                self.orders.create_index("orderId", unique=True)
+            else:
+                print("ℹ️ Index orderId_1 already exists, skipping...")
+            
+            if "userId_1" not in existing_orders_indexes:
+                self.orders.create_index("userId")
+            else:
+                print("ℹ️ Index userId_1 (orders) already exists, skipping...")
+            
+            # Deposits indexes
+            existing_deposits_indexes = self.deposits.index_information()
+            if "userId_1" not in existing_deposits_indexes:
+                self.deposits.create_index("userId")
+            else:
+                print("ℹ️ Index userId_1 (deposits) already exists, skipping...")
+            
+            if "status_1" not in existing_deposits_indexes:
+                self.deposits.create_index("status")
+            else:
+                print("ℹ️ Index status_1 already exists, skipping...")
+            
+            # Config indexes
+            existing_config_indexes = self.config.index_information()
+            if "key_1" not in existing_config_indexes:
+                self.config.create_index("key", unique=True)
+            else:
+                print("ℹ️ Index key_1 already exists, skipping...")
+            
+            # Admin Prices indexes
+            existing_admin_prices_indexes = self.admin_prices.index_information()
+            if "productCode_1" not in existing_admin_prices_indexes:
+                self.admin_prices.create_index("productCode", unique=True)
+            else:
+                print("ℹ️ Index productCode_1 (admin_prices) already exists, skipping...")
+            
+            # Customer Prices indexes
+            existing_customer_prices_indexes = self.customer_prices.index_information()
+            if "productCode_1" not in existing_customer_prices_indexes:
+                self.customer_prices.create_index("productCode", unique=True)
+            else:
+                print("ℹ️ Index productCode_1 (customer_prices) already exists, skipping...")
+            
+            print("✅ All indexes verified")
+            
+        except Exception as e:
+            print(f"⚠️ Index creation warning: {e}")
 
     # ──────────── User Functions ────────────
     
@@ -268,7 +325,6 @@ class Database:
         if amount <= 0:
             return False, "Deposit amount is 0. Please use /approve <id> <amount>"
         
-        # Update deposit status
         self.deposits.update_one(
             {"_id": ObjectId(deposit_id)},
             {
@@ -280,7 +336,6 @@ class Database:
             }
         )
         
-        # Add balance to user
         user_id = deposit["userId"]
         self.update_balance(user_id, amount)
         
@@ -304,7 +359,6 @@ class Database:
         if amount <= 0:
             return False, "Amount must be positive!"
         
-        # Update deposit with amount
         self.deposits.update_one(
             {"_id": ObjectId(deposit_id)},
             {
@@ -317,7 +371,6 @@ class Database:
             }
         )
         
-        # Add balance to user
         user_id = deposit["userId"]
         self.update_balance(user_id, amount)
         
@@ -391,7 +444,7 @@ class Database:
         self.config.update_one(
             {"key": "bot_config"},
             {"$set": {"key": "bot_config", "value": default_config}},
-            {"upsert": True}
+            upsert=True
         )
         
         return default_config
@@ -403,7 +456,7 @@ class Database:
             self.config.update_one(
                 {"key": "bot_config"},
                 {"$set": {"key": "bot_config", "value": new_config}},
-                {"upsert": True}
+                upsert=True
             )
             return True
         except Exception as e:
@@ -422,6 +475,120 @@ class Database:
             "min": config.get("minDeposit", 100),
             "max": config.get("maxDeposit", 50000)
         }
+
+    # ──────────── Price Management Functions ────────────
+    
+    def get_admin_price(self, product_code: str) -> float:
+        """Get admin price for a product"""
+        price_doc = self.admin_prices.find_one({"productCode": product_code})
+        if price_doc:
+            return price_doc.get("price", 0)
+        return 0
+    
+    def get_customer_price(self, product_code: str) -> float:
+        """Get customer price for a product"""
+        price_doc = self.customer_prices.find_one({"productCode": product_code})
+        if price_doc:
+            return price_doc.get("price", 0)
+        return 0
+    
+    def get_all_admin_prices(self) -> dict:
+        """Get all admin prices as dict"""
+        prices = {}
+        for doc in self.admin_prices.find({}):
+            prices[doc["productCode"]] = doc.get("price", 0)
+        return prices
+    
+    def get_all_customer_prices(self) -> dict:
+        """Get all customer prices as dict"""
+        prices = {}
+        for doc in self.customer_prices.find({}):
+            prices[doc["productCode"]] = doc.get("price", 0)
+        return prices
+    
+    def get_product_price_for_user(self, product_code: str, user_id: int) -> float:
+        """Get product price based on user role"""
+        user = self.get_user(user_id)
+        is_admin = user.get("isAdmin", False) if user else False
+        
+        if is_admin:
+            return self.get_admin_price(product_code)
+        else:
+            return self.get_customer_price(product_code)
+    
+    def set_admin_price(self, product_code: str, price: float) -> bool:
+        """Set admin price for a product"""
+        try:
+            self.admin_prices.update_one(
+                {"productCode": product_code},
+                {
+                    "$set": {
+                        "productCode": product_code,
+                        "price": float(price),
+                        "updatedAt": self.get_current_time()
+                    }
+                },
+                upsert=True
+            )
+            return True
+        except Exception as e:
+            print(f"❌ Error setting admin price: {e}")
+            return False
+    
+    def set_customer_price(self, product_code: str, price: float) -> bool:
+        """Set customer price for a product"""
+        try:
+            self.customer_prices.update_one(
+                {"productCode": product_code},
+                {
+                    "$set": {
+                        "productCode": product_code,
+                        "price": float(price),
+                        "updatedAt": self.get_current_time()
+                    }
+                },
+                upsert=True
+            )
+            return True
+        except Exception as e:
+            print(f"❌ Error setting customer price: {e}")
+            return False
+    
+    def reset_admin_prices(self, default_prices: dict) -> bool:
+        """Reset admin prices to default values"""
+        try:
+            # Delete all existing admin prices
+            self.admin_prices.delete_many({})
+            
+            # Insert default prices
+            for product_code, price in default_prices.items():
+                self.admin_prices.insert_one({
+                    "productCode": product_code,
+                    "price": float(price),
+                    "updatedAt": self.get_current_time()
+                })
+            return True
+        except Exception as e:
+            print(f"❌ Error resetting admin prices: {e}")
+            return False
+    
+    def reset_customer_prices(self, default_prices: dict) -> bool:
+        """Reset customer prices to default values"""
+        try:
+            # Delete all existing customer prices
+            self.customer_prices.delete_many({})
+            
+            # Insert default prices
+            for product_code, price in default_prices.items():
+                self.customer_prices.insert_one({
+                    "productCode": product_code,
+                    "price": float(price),
+                    "updatedAt": self.get_current_time()
+                })
+            return True
+        except Exception as e:
+            print(f"❌ Error resetting customer prices: {e}")
+            return False
 
     # ──────────── Utility Functions ────────────
     
