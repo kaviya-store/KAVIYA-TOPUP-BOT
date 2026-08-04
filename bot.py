@@ -953,7 +953,7 @@ def main():
     
     # ── Command Handlers ──
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("profile", profile_command))
+    app.add_handler(CommandHandler("wallet", profile_command))
     app.add_handler(CommandHandler("products", store_command))
     app.add_handler(CommandHandler("id", topup_command))
     app.add_handler(CommandHandler("orders", orders_command))
