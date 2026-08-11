@@ -942,21 +942,28 @@ def main():
     
     # ── Deposit Conversation ──
     deposit_handler = ConversationHandler(
-        entry_points=[
-            CommandHandler("deposit", deposit_command),
+    entry_points=[
+        CommandHandler("deposit", deposit_command),
+    ],
+    states={
+        WAITING_DEPOSIT_IMAGE: [
+            MessageHandler(
+                filters.PHOTO,
+                receive_deposit_image
+            )
         ],
-        states={
-            WAITING_DEPOSIT_IMAGE: [
-                MessageHandler(filters.PHOTO, receive_deposit_image)
-            ],
-            WAITING_DEPOSIT_METHOD: [
-                CallbackQueryHandler(method_selection_callback, pattern="^method_")
-            ]
-        },
-        fallbacks=[
-            CommandHandler("cancel", cancel_deposit)
+        WAITING_DEPOSIT_METHOD: [
+            CallbackQueryHandler(
+                method_selection_callback,
+                pattern="^method_"
+            )
         ]
-    )
+    },
+    fallbacks=[
+        CommandHandler("cancel", cancel_deposit)
+    ],
+    allow_reentry=True
+)
     
     # ── Command Handlers ──
     app.add_handler(CommandHandler("start", start))
