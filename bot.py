@@ -497,10 +497,10 @@ async def deposit_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 Minimum: {min_deposit} LKR\n"
         f"💰 Maximum: {max_deposit} LKR\n\n"
         "📋 Payment Methods:\n"
-        "├ 📱 EZ Cash - 0766247995\n"
-        "├ 🏦 Bank - Comming soon\n"
-        "├ 👤 Name - Zanta\n\n"
-        "📷 Send screenshot of your payment"
+        "├ 📱 EZ Cash - 0768747350\n"
+        "├ 🏦 Binance - 774894425\n\n"
+        "📷 Send screenshot of your payment\n"
+        "Or use /verify To submit RN number."
     )
     
     await update.message.reply_text(deposit_text)
@@ -866,7 +866,7 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "❌ Invalid format!\n\n"
             "Usage: /broadcast <message>\n"
-            "Example: /broadcast Hello everyone!\n\n"
+            "Usage: /broadcast_ml & reply to a message\n\n"
             "⚠️ This will send the message to ALL users."
         )
         return
@@ -1023,7 +1023,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     welcome_text = (
         f"👋 Hey {user.first_name}!\n"
-        "🎉 Welcome to 𝐙𝐀𝐍𝐓𝐀 𝐓𝐎𝐏𝐔𝐏 𝐂𝐄𝐍𝐓𝐄𝐑!\n\n"
+        "🎉 Welcome to ✨ 𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫💎✨!\n\n"
         "📱 Your Account Details:\n"
         f"├ 🆔 ID: {user.id}\n"
         f"├ 👤 Name: {user.first_name}\n"
@@ -1067,9 +1067,7 @@ async def wallet_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"├ 👤 Name: {db_user.get('firstName', 'N/A')}\n"
         f"├ 💰 Balance: {db_user['balance']:.2f} LKR\n"
         f"├ 📦 Orders: {db_user.get('totalOrders', 0)}\n"
-        f"├ 💳 Deposits: {db_user.get('totalDeposits', 0)}\n"
-        f"├ 📅 Joined: {db_user['createdAt'][:10]}\n"
-        f"└ 🛡️ Status: {'✅ Active' if not db_user.get('isBanned', False) else '❌ Banned'}"
+        f"├ 💳 Deposits: {db_user.get('totalDeposits', 0)}"
     )
     
     await update.message.reply_text(profile_text)
