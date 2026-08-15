@@ -1,8 +1,10 @@
 import os
 import httpx
 import logging
-from typing import List, Dict, Optional
-from datetime import datetime, timedelta
+import random
+from datetime import datetime
+from typing import Dict, Optional, Tuple
+from database import db
 
 logger = logging.getLogger(__name__)
 
@@ -10,420 +12,477 @@ logger = logging.getLogger(__name__)
 # Config
 # ──────────────────────────────
 
-BAY2GAME_API_URL = "https://api.bay2game.xyz/api/products"
+BAY2GAME_API_URL = "https://api.bay2game.xyz/api/create_order"
 BAY2GAME_API_KEY = "498185DF8D4C27DB67D5216A"
-DEFAULT_USD_TO_LKR_RATE = 349.69  # Default USD to LKR conversion rate
 
-# Allowed products - only these will be shown
-ALLOWED_PRODUCTS = [
-    "FREEFIRE_SG_25",
-    "FREEFIRE_SG_100",
-    "FREEFIRE_SG_310",
-    "FREEFIRE_SG_520",
-    "FREEFIRE_SG_1060",
-    "FREEFIRE_SG_2180",
-    "FREEFIRE_SG_5600",
-    "FREEFIRE_SG_11500",
-    "FREEFIRE_SG_Weekly_Lite",
-    "FREEFIRE_SG_Weekly_Membership",
-    "FREEFIRE_SG_Monthly_Membership"
-]
-
-class ProductManager:
-    """Manage products from Bay2Game API"""
+class OrderManager:
+    """Manage order creation and processing"""
     
     def __init__(self):
         self.api_url = BAY2GAME_API_URL
         self.api_key = BAY2GAME_API_KEY
-        self.default_usd_rate = DEFAULT_USD_TO_LKR_RATE
-        self.allowed_products = ALLOWED_PRODUCTS
-        self.cache = {
-            "products": None,  # Changed from [] to None
-            "last_updated": None
-        }
-        self.cache_duration = 300  # 5 minutes cache
     
-    def get_usd_rate(self) -> float:
-        """
-        Get USD to LKR rate from database
-        If not available, use default rate
-        """
+    def generate_order_id(self) -> str:
+        """Generate unique order ID"""
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        random_num = random.randint(1000, 9999)
+        return f"ZANTA{timestamp}{random_num}"
+    
+    def generate_reference(self) -> str:
+        """Generate unique reference for API"""
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        random_num = random.randint(100000, 999999)
+        return f"REF{timestamp}{random_num}"
+    
+    async def check_user_balance(self, user_id: int, product_price_lkr: float) -> Tuple[bool, float, str]:
+        """Check if user has sufficient balance"""
+        user = db.get_user(user_id)
+        
+        if not user:
+            return False, 0.0, "❌ User not found! Please /start first."
+        
+        current_balance = user.get("balance", 0.0)
+        
+        if current_balance < product_price_lkr:
+            return False, current_balance, (
+                f"❌ **Insufficient Balance!**\n\n"
+                f"💰 Required: **{product_price_lkr:.2f}** LKR\n"
+                f"💵 Your Balance: **{current_balance:.2f}** LKR\n"
+                f"💳 Need: **{product_price_lkr - current_balance:.2f}** LKR more\n\n"
+                f"Please deposit first to continue."
+            )
+        
+        return True, current_balance, "✅ Balance sufficient"
+    
+    async def create_order_with_api(
+        self,
+        user_id: int,
+        product_code: str,
+        game_user_id: str,
+        game_zone_id: Optional[str] = None,
+        product_name: str = None,
+        amount_lkr: float = 0,
+        game_code: str = "freefire_sgmy"
+    ) -> Dict:
+        """Create order with Bay2Game API"""
         try:
-            from database import db
-            rate = db.get_usd_to_lkr_rate()
-            return rate
-        except Exception as e:
-            logger.warning(f"Could not get USD rate from database: {e}, using default: {self.default_usd_rate}")
-            return self.default_usd_rate
-    
-    def convert_price_to_lkr(self, usd_price: float) -> float:
-        """
-        Convert USD price to LKR using database rate
-        
-        Args:
-            usd_price: Price in USD
-        
-        Returns:
-            Price in LKR (rounded to 2 decimal places)
-        """
-        rate = self.get_usd_rate()
-        return round(usd_price * rate, 2)
-    
-    async def fetch_products(self, game_code: str = "freefire_sg") -> Dict:
-        """
-        Fetch products from Bay2Game API
-        
-        Args:
-            game_code: Game code (default: freefire_sg)
-        
-        Returns:
-            Dict containing game info and products
-        """
-        try:
-            url = f"{self.api_url}?api_key={self.api_key}&game_code={game_code}"
+            reference = self.generate_reference()
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(url)
+            params = {
+                'api_key': self.api_key,
+                'product_code': product_code,
+                'game_user_id': game_user_id,
+                'reference': reference,
+                'game_code': game_code
+            }
+            
+            if game_zone_id:
+                params['game_zone_id'] = game_zone_id
+            
+            logger.info(f"📤 Creating order with params: {params}")
+            logger.info(f"🎮 Game Code: {game_code}")
+            
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                response = await client.get(self.api_url, params=params)
                 response.raise_for_status()
-                data = response.json()
+                api_response = response.json()
                 
-                if data.get("status") == "success":
-                    return data
-                else:
-                    logger.error(f"API returned error: {data}")
-                    return {"status": "error", "message": "Failed to fetch products"}
-                    
+                logger.info(f"📥 API Response: {api_response}")
+                
+                api_status = api_response.get("status", "")
+                is_success = api_status in ["success", "SUCCESS", "Success"]
+                
+                order = self.save_order_to_database_atomic(
+                    user_id=user_id,
+                    product_code=product_code,
+                    game_user_id=game_user_id,
+                    game_zone_id=game_zone_id,
+                    product_name=product_name,
+                    amount_lkr=amount_lkr,
+                    reference=reference,
+                    api_response=api_response,
+                    is_success=is_success,
+                    game_code=game_code
+                )
+                
+                return {
+                    "success": is_success,
+                    "api_response": api_response,
+                    "order": order
+                }
+                
         except httpx.TimeoutException:
             logger.error("API request timeout")
-            return {"status": "error", "message": "API request timeout"}
+            return {
+                "success": False,
+                "error": "API request timeout. Please try again.",
+                "api_response": None
+            }
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error: {e}")
-            return {"status": "error", "message": f"HTTP error: {e.response.status_code}"}
-        except Exception as e:
-            logger.error(f"Error fetching products: {e}")
-            return {"status": "error", "message": f"Error: {str(e)}"}
-    
-    def is_product_allowed(self, product_code: str) -> bool:
-        """
-        Check if product is in allowed list
-        
-        Args:
-            product_code: Product code from API
-        
-        Returns:
-            True if allowed, False otherwise
-        """
-        return product_code in self.allowed_products
-    
-    def format_products(self, api_response: Dict) -> Dict:
-        """
-        Format products from API response - filter only allowed products
-        
-        Args:
-            api_response: Raw API response
-        
-        Returns:
-            Formatted products with LKR prices (filtered)
-        """
-        if api_response.get("status") != "success":
             return {
-                "status": "error",
-                "game": None,
-                "products": [],
-                "message": api_response.get("message", "Failed to fetch products")
+                "success": False,
+                "error": f"HTTP error: {e.response.status_code}",
+                "api_response": None
+            }
+        except Exception as e:
+            logger.error(f"Error creating order: {e}")
+            return {
+                "success": False,
+                "error": f"Error: {str(e)}",
+                "api_response": None
+            }
+    
+    def save_order_to_database_atomic(
+        self,
+        user_id: int,
+        product_code: str,
+        game_user_id: str,
+        game_zone_id: Optional[str],
+        product_name: str,
+        amount_lkr: float,
+        reference: str,
+        api_response: Dict,
+        is_success: bool,
+        game_code: str = "freefire_sg"
+    ) -> Dict:
+        """
+        Save order to database with ATOMIC balance deduction
+        """
+        order_id = self.generate_order_id()
+        
+        # Get user before deduction
+        user = db.get_user(user_id)
+        if not user:
+            logger.error(f"❌ User {user_id} not found!")
+            return {
+                "orderId": order_id,
+                "status": "failed",
+                "error": "User not found"
             }
         
-        game_data = api_response.get("game", {})
-        products_raw = api_response.get("products", [])
+        balance_before = user.get("balance", 0.0)
+        api_status = api_response.get("status", "")
         
-        formatted_products = []
-        skipped_products = []
+        # ─── Prepare order data ───
+        new_order = {
+            "orderId": order_id,
+            "userId": user_id,
+            "reference": reference,
+            "productCode": product_code,
+            "productName": product_name or api_response.get("product_name", "Unknown"),
+            "playerId": game_user_id,
+            "gameZoneId": game_zone_id,
+            "gameName": api_response.get("game_name", "FreeFire SG"),
+            "gameCode": game_code,
+            "amountUSD": api_response.get("amount", 0),
+            "amountLKR": amount_lkr,
+            "status": "pending",
+            "apiStatus": api_status,
+            "apiMessage": api_response.get("message", ""),
+            "balanceBefore": balance_before,
+            "balanceAfter": balance_before,
+            "apiBalanceBefore": api_response.get("balance_before", 0),
+            "apiBalanceAfter": api_response.get("balance_after", 0),
+            "createdAt": db.get_current_time(),
+            "completedAt": None,
+            "rawResponse": api_response
+        }
         
-        # Get current rate for logging
-        current_rate = self.get_usd_rate()
-        logger.info(f"💰 Using USD to LKR rate: {current_rate}")
-        
-        for product in products_raw:
-            product_code = product.get("product_code", "")
+        # ─── If API success, deduct balance ───
+        if is_success:
+            deduct_success, deduct_message, new_balance = self._deduct_balance_safe(
+                user_id, amount_lkr, balance_before
+            )
             
-            # Only include allowed products
-            if not self.is_product_allowed(product_code):
-                skipped_products.append(product_code)
-                continue
+            if deduct_success:
+                new_order["status"] = "completed"
+                new_order["balanceAfter"] = new_balance
+                new_order["completedAt"] = api_response.get("completed_at") or db.get_current_time()
+                new_order["apiMessage"] = "Order completed successfully"
+                
+                db.increment_orders(user_id)
+                
+                logger.info(f"✅ Order {order_id} COMPLETED. Deducted {amount_lkr:.2f} LKR")
+                logger.info(f"💰 Balance: {balance_before:.2f} → {new_balance:.2f} LKR")
+            else:
+                new_order["status"] = "failed"
+                new_order["balanceAfter"] = balance_before
+                new_order["apiMessage"] = f"Balance deduction failed: {deduct_message}"
+                
+                logger.error(f"❌ Order {order_id} FAILED. {deduct_message}")
+        else:
+            new_order["status"] = "failed"
+            new_order["balanceAfter"] = balance_before
+            new_order["apiMessage"] = api_response.get("message", "API order failed")
             
-            usd_price = product.get("sell_price", 0)
-            lkr_price = self.convert_price_to_lkr(usd_price)
+            logger.warning(f"⚠️ Order {order_id} FAILED. API error: {new_order['apiMessage']}")
+        
+        # ─── Save order to database ───
+        db.orders.insert_one(new_order)
+        
+        return new_order
+    
+    def _deduct_balance_safe(self, user_id: int, amount: float, current_balance: float) -> Tuple[bool, str, float]:
+        """
+        Safely deduct balance from user
+        
+        Returns: (success, message, new_balance)
+        """
+        try:
+            if current_balance < amount:
+                return False, f"Insufficient balance. Required: {amount}, Available: {current_balance}", current_balance
             
-            formatted_products.append({
-                "id": product.get("id"),
-                "product_code": product_code,
-                "name": product.get("name"),
-                "sell_price_usd": usd_price,
-                "sell_price_lkr": lkr_price,
-                "display_price": f"${usd_price:.2f} (Rs. {lkr_price:,.2f})",
-                "status": product.get("status"),
-                "supplier_type": product.get("supplier_type"),
-                "raw": product  # Keep raw data for reference
-            })
+            result = db.users.update_one(
+                {"userId": user_id},
+                {"$inc": {"balance": -amount}}
+            )
+            
+            if result.modified_count > 0:
+                new_balance = current_balance - amount
+                return True, "Balance deducted successfully", new_balance
+            else:
+                return False, "Failed to update balance in database", current_balance
+                
+        except Exception as e:
+            logger.error(f"Error deducting balance: {e}")
+            return False, f"Database error: {str(e)}", current_balance
+    
+    async def process_order(
+        self,
+        user_id: int,
+        product_code: str,
+        game_user_id: str,
+        game_zone_id: Optional[str] = None,
+        product_name: str = None,
+        price_lkr: float = 0,
+        game_code: str = "freefire_sg"
+    ) -> Dict:
+        """Full order processing flow"""
+        has_balance, current_balance, balance_msg = await self.check_user_balance(
+            user_id, price_lkr
+        )
         
-        logger.info(f"✅ Allowed products: {len(formatted_products)}")
-        logger.info(f"⏭️ Skipped products: {len(skipped_products)}")
+        if not has_balance:
+            return {
+                "success": False,
+                "error": balance_msg,
+                "current_balance": current_balance
+            }
         
-        # Sort products by price (low to high)
-        formatted_products.sort(key=lambda x: x.get("sell_price_lkr", 0))
+        result = await self.create_order_with_api(
+            user_id=user_id,
+            product_code=product_code,
+            game_user_id=game_user_id,
+            game_zone_id=game_zone_id,
+            product_name=product_name,
+            amount_lkr=price_lkr,
+            game_code=game_code
+        )
         
+        return result
+
+# ──────────────────────────────
+# Create instance (SINGLETON)
+# ──────────────────────────────
+
+order_manager = OrderManager()
+
+# ──────────────────────────────
+# Utility Functions for Bot
+# ──────────────────────────────
+
+async def process_product_purchase(
+    user_id: int,
+    product_id: int,
+    game_user_id: str,
+    game_zone_id: Optional[str] = None,
+    game_code: str = "freefire_sg"
+) -> Dict:
+    """Process product purchase from product ID"""
+    from products import product_manager
+    
+    product = product_manager.get_product_by_id(product_id, user_id)
+    
+    if not product:
         return {
-            "status": "success",
-            "game": {
-                "game_code": game_data.get("game_code"),
-                "name": game_data.get("name"),
-                "description": game_data.get("description"),
-                "image_url": game_data.get("image_url"),
-                "fields": game_data.get("game_fields", [])
-            },
-            "products": formatted_products,
-            "total_products": len(formatted_products),
-            "skipped_products": skipped_products,
-            "usd_rate_used": self.get_usd_rate()  # Include rate used for reference
+            "success": False,
+            "error": "Product not found. Please try again.",
+            "step": "product_not_found"
         }
     
-    async def get_products(self, game_code: str = "freefire_sg", force_refresh: bool = False) -> Dict:
-        """
-        Get products with caching - only allowed products
-        
-        Args:
-            game_code: Game code
-            force_refresh: Force refresh cache
-        
-        Returns:
-            Formatted products with LKR prices (filtered)
-        """
-        # Check cache
-        if not force_refresh and self.cache["products"] is not None and self.cache["last_updated"]:
-            cache_age = (datetime.now() - self.cache["last_updated"]).total_seconds()
-            if cache_age < self.cache_duration:
-                logger.info("Returning cached products")
-                return self.cache["products"]
-        
-        # Fetch from API
-        logger.info(f"Fetching products for game: {game_code}")
-        api_response = await self.fetch_products(game_code)
-        formatted = self.format_products(api_response)
-        
-        # Update cache
-        if formatted.get("status") == "success":
-            self.cache["products"] = formatted
-            self.cache["last_updated"] = datetime.now()
-        
-        return formatted
+    product_code = product.get("product_code")
+    product_name = product.get("name")
+    price_lkr = product.get("sell_price_lkr", 0)
     
-    def get_product_by_id(self, product_id: int) -> Optional[Dict]:
-        """Get product by ID from cache"""
-        products_data = self.cache["products"]
-        if not products_data:
-            return None
-        products = products_data.get("products", [])
-        for product in products:
-            if product.get("id") == product_id:
-                return product
-        return None
+    logger.info(f"📦 Processing purchase: {product_code} - {product_name}")
+    logger.info(f"💰 Price: Rs. {price_lkr:.2f}")
+    logger.info(f"🎮 Game Code: {game_code}")
     
-    def get_product_by_code(self, product_code: str) -> Optional[Dict]:
-        """Get product by product code from cache"""
-        products_data = self.cache["products"]
-        if not products_data:
-            return None
-        products = products_data.get("products", [])
-        for product in products:
-            if product.get("product_code") == product_code:
-                return product
-        return None
+    result = await order_manager.process_order(
+        user_id=user_id,
+        product_code=product_code,
+        game_user_id=game_user_id,
+        game_zone_id=game_zone_id,
+        product_name=product_name,
+        price_lkr=price_lkr,
+        game_code=game_code
+    )
     
-    def search_products(self, query: str) -> List[Dict]:
-        """Search products by name or code"""
-        products_data = self.cache["products"]
-        if not products_data:
-            return []
-        products = products_data.get("products", [])
-        query_lower = query.lower()
-        
-        results = []
-        for product in products:
-            if (query_lower in product.get("name", "").lower() or 
-                query_lower in product.get("product_code", "").lower()):
-                results.append(product)
-        
-        return results
-    
-    def get_products_by_price_range(self, min_price: float, max_price: float) -> List[Dict]:
-        """Get products within price range (LKR)"""
-        products_data = self.cache["products"]
-        if not products_data:
-            return []
-        products = products_data.get("products", [])
-        
-        results = []
-        for product in products:
-            price = product.get("sell_price_lkr", 0)
-            if min_price <= price <= max_price:
-                results.append(product)
-        
-        return results
-    
-    def get_active_products(self) -> List[Dict]:
-        """Get only active products"""
-        products_data = self.cache["products"]
-        if not products_data:
-            return []
-        products = products_data.get("products", [])
-        return [p for p in products if p.get("status") == "active"]
+    return result
 
-# ──────────────────────────────
-# Singleton instance
-# ──────────────────────────────
-
-product_manager = ProductManager()
-
-# ──────────────────────────────
-# Utility Functions (for bot use)
-# ──────────────────────────────
-
-async def get_game_products(game_code: str = "freefire_sg") -> Dict:
-    """Get products for a specific game"""
-    return await product_manager.get_products(game_code)
-
-async def get_freefire_products() -> Dict:
-    """Get FreeFire SG products specifically (filtered)"""
-    return await product_manager.get_products("freefire_sg")
-
-def format_products_for_display(products_data: Dict, limit: int = 20) -> str:
-    """
-    Format products for display in Telegram
+def format_order_result(result: Dict) -> str:
+    """Format order result for user display"""
+    if not result.get("success"):
+        return result.get("error", "❌ Order failed. Please try again.")
     
-    Args:
-        products_data: Formatted products data
-        limit: Maximum products to display
+    order = result.get("order", {})
+    status = order.get("status", "unknown")
+    game_code = order.get("gameCode", "freefire_sg")
     
-    Returns:
-        Formatted string for display
-    """
-    if products_data.get("status") != "success":
-        return "❌ Failed to load products. Please try again."
+    game_display = "FreeFire SG" if game_code == "freefire_sg" else "FreeFire SG MY"
     
-    game = products_data.get("game", {})
-    products = products_data.get("products", [])
-    
-    if not products:
-        return "📦 No products available for this game."
-    
-    text = f"🎮 **{game.get('name', 'Game')} Products**\n"
-    text += f"📊 Total: {len(products)} products\n"
-    
-    # Show rate used
-    rate_used = products_data.get("usd_rate_used")
-    if rate_used:
-        text += f"💰 Rate: 1 USD = {rate_used:.2f} LKR\n"
-    
-    text += f"\n"
-    
-    # Show first few products
-    display_products = products[:limit]
-    for product in display_products:
-        text += (
-            f"├ 🆔 {product.get('id')}\n"
-            f"├ 📝 {product.get('name')}\n"
-            f"├ 💰 {product.get('display_price')}\n"
-            f"├ 📦 {product.get('supplier_type', 'N/A').upper()}\n"
-            f"└ {'✅ Active' if product.get('status') == 'active' else '❌ Inactive'}\n\n"
+    if status == "completed":
+        text = (
+            f"✅ **Order Successful!**\n\n"
+            f"🆔 Order ID: `{order.get('orderId')}`\n"
+            f"📝 Product: {order.get('productName')}\n"
+            f"🎮 Game: {game_display}\n"
+            f"🎯 Player ID: {order.get('playerId')}\n"
+            f"💰 Amount: Rs. {order.get('amountLKR', 0):,.2f}\n"
+            f"💵 Balance: Rs. {order.get('balanceBefore', 0):,.2f} → Rs. {order.get('balanceAfter', 0):,.2f}\n"
+            f"📅 Completed: {order.get('completedAt', 'N/A')[:10]}\n\n"
+            f"✅ Your order has been processed successfully!"
         )
-    
-    if len(products) > limit:
-        text += f"_... and {len(products) - limit} more products_"
+    elif status == "pending":
+        text = (
+            f"⏳ **Order Pending!**\n\n"
+            f"🆔 Order ID: `{order.get('orderId')}`\n"
+            f"📝 Product: {order.get('productName')}\n"
+            f"🎯 Player ID: {order.get('playerId')}\n"
+            f"💰 Amount: Rs. {order.get('amountLKR', 0):,.2f}\n\n"
+            f"⏳ Your order is being processed. Please wait."
+        )
+    else:
+        text = (
+            f"❌ **Order Failed!**\n\n"
+            f"📝 Product: {order.get('productName', 'Unknown')}\n"
+            f"🎯 Player ID: {order.get('playerId')}\n"
+            f"💬 Reason: {order.get('apiMessage', 'Unknown error')}\n\n"
+            f"⚠️ Please try again or contact support."
+        )
     
     return text
 
-def format_product_for_inline_button(product: Dict) -> str:
-    """
-    Format product for inline button text
-    """
-    name = product.get('name', 'Unknown')
-    price = product.get('sell_price_lkr', 0)
-    return f"{name} - Rs. {price:,.2f}"
-
-def create_product_keyboard(products_data: Dict, max_buttons: int = 10) -> List[List]:
-    """
-    Create inline keyboard from products
+def format_order_for_admin(order: Dict) -> str:
+    """Format order for admin display"""
+    status_emoji = {
+        "completed": "✅",
+        "pending": "⏳",
+        "failed": "❌"
+    }.get(order.get("status"), "❓")
     
-    Args:
-        products_data: Formatted products data
-        max_buttons: Maximum buttons per page
+    text = (
+        f"{status_emoji} **Order {order.get('orderId')}**\n"
+        f"├ 👤 User ID: `{order.get('userId')}`\n"
+        f"├ 📝 Product: {order.get('productName')}\n"
+        f"├ 🎯 Player: {order.get('playerId')}\n"
+        f"├ 💰 Amount: Rs. {order.get('amountLKR', 0):,.2f}\n"
+        f"├ 📊 Status: {order.get('status', 'unknown').upper()}\n"
+        f"├ 💬 Message: {order.get('apiMessage', 'N/A')}\n"
+        f"└ 📅 Created: {order.get('createdAt', 'N/A')[:10]}\n"
+    )
     
-    Returns:
-        List of InlineKeyboardButton rows
-    """
-    from telegram import InlineKeyboardButton
-    
-    if products_data.get("status") != "success":
-        return []
-    
-    products = products_data.get("products", [])
-    
-    keyboard = []
-    for product in products[:max_buttons]:
-        button_text = format_product_for_inline_button(product)
-        callback_data = f"buy_product_{product.get('id')}"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
-    
-    return keyboard
+    return text
 
 # ──────────────────────────────
-# Test function (for development)
+# Test function
 # ──────────────────────────────
 
-async def test_products():
-    """Test function to fetch and display products"""
+async def test_order_creation():
+    """Test order creation"""
     print("=" * 50)
-    print("🔄 Fetching FreeFire products...")
-    print(f"📋 Allowed Products: {len(ALLOWED_PRODUCTS)}")
+    print("🔄 Testing Order Creation")
     print("=" * 50)
     
-    result = await get_freefire_products()
+    test_user_id = 123456789
+    test_product_code = "FREEFIRE_SG_25"
+    test_player_id = "123456789"
+    test_price_lkr = 120
     
-    if result.get("status") == "success":
-        game = result.get("game")
-        products = result.get("products")
-        skipped = result.get("skipped_products", [])
-        rate_used = result.get("usd_rate_used", "Unknown")
-        
-        print(f"\n✅ Game: {game.get('name')}")
-        print(f"📊 Total Products Found: {len(products)}")
-        print(f"⏭️ Skipped Products: {len(skipped)}")
-        print(f"💰 USD to LKR Rate: {rate_used}")
-        print("\n📦 Allowed Products:")
-        
-        for i, product in enumerate(products, 1):
-            print(f"\n{i}. Product: {product.get('name')}")
-            print(f"   ├ Code: {product.get('product_code')}")
-            print(f"   ├ USD: ${product.get('sell_price_usd'):.2f}")
-            print(f"   ├ LKR: Rs. {product.get('sell_price_lkr'):,.2f}")
-            print(f"   ├ ID: {product.get('id')}")
-            print(f"   └ Status: {product.get('status')}")
-        
-        if skipped:
-            print(f"\n⏭️ Skipped Products ({len(skipped)}):")
-            for code in skipped[:10]:
-                print(f"   └ {code}")
-            if len(skipped) > 10:
-                print(f"   ... and {len(skipped) - 10} more")
+    print(f"\n📝 Test Order Details:")
+    print(f"├ User ID: {test_user_id}")
+    print(f"├ Product Code: {test_product_code}")
+    print(f"├ Player ID: {test_player_id}")
+    print(f"└ Price: Rs. {test_price_lkr:.2f}")
+    
+    print("\n⏳ Processing order...")
+    
+    result = await order_manager.process_order(
+        user_id=test_user_id,
+        product_code=test_product_code,
+        game_user_id=test_player_id,
+        game_zone_id=None,
+        product_name="25 Diamonds",
+        price_lkr=test_price_lkr
+    )
+    
+    print("\n📊 Result:")
+    if result.get("success"):
+        print("✅ Order successful!")
+        order = result.get("order", {})
+        print(f"├ Order ID: {order.get('orderId')}")
+        print(f"├ Status: {order.get('status')}")
+        print(f"├ Balance Before: Rs. {order.get('balanceBefore', 0):,.2f}")
+        print(f"├ Balance After: Rs. {order.get('balanceAfter', 0):,.2f}")
+        print(f"└ Reference: {order.get('reference')}")
     else:
-        print(f"❌ Error: {result.get('message')}")
+        print(f"❌ Order failed: {result.get('error')}")
 
-# ──────────────────────────────
-# Main (for testing)
-# ──────────────────────────────
+async def test_sgmy_order():
+    """Test SG MY order creation"""
+    print("=" * 50)
+    print("🔄 Testing SG MY Order Creation")
+    print("=" * 50)
+    
+    test_user_id = 123456789
+    test_product_code = "FREEFIRE_SGMY_Level_Up_Package___Level_6"
+    test_player_id = "123456789"
+    test_price_lkr = 110
+    
+    print(f"\n📝 Test Order Details:")
+    print(f"├ User ID: {test_user_id}")
+    print(f"├ Product Code: {test_product_code}")
+    print(f"├ Player ID: {test_player_id}")
+    print(f"└ Price: Rs. {test_price_lkr:.2f}")
+    print(f"└ Game Code: freefire_sgmy")
+    
+    print("\n⏳ Processing order...")
+    
+    result = await order_manager.process_order(
+        user_id=test_user_id,
+        product_code=test_product_code,
+        game_user_id=test_player_id,
+        game_zone_id=None,
+        product_name="Level 6",
+        price_lkr=test_price_lkr,
+        game_code="freefire_sgmy"
+    )
+    
+    print("\n📊 Result:")
+    if result.get("success"):
+        print("✅ Order successful!")
+        order = result.get("order", {})
+        print(f"├ Order ID: {order.get('orderId')}")
+        print(f"├ Status: {order.get('status')}")
+        print(f"├ Game Code: {order.get('gameCode')}")
+        print(f"├ Balance Before: Rs. {order.get('balanceBefore', 0):,.2f}")
+        print(f"├ Balance After: Rs. {order.get('balanceAfter', 0):,.2f}")
+        print(f"└ Reference: {order.get('reference')}")
+    else:
+        print(f"❌ Order failed: {result.get('error')}")
 
 if __name__ == "__main__":
     import asyncio
-    
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(test_products())
+    asyncio.run(test_order_creation())
