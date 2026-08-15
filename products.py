@@ -15,17 +15,28 @@ BAY2GAME_API_KEY = "498185DF8D4C27DB67D5216A"
 
 # Allowed products - only these will be shown
 ALLOWED_PRODUCTS = [
-    "FREEFIRE_SG_25",
-    "FREEFIRE_SG_100",
-    "FREEFIRE_SG_310",
-    "FREEFIRE_SG_520",
-    "FREEFIRE_SG_1060",
-    "FREEFIRE_SG_2180",
-    "FREEFIRE_SG_5600",
-    "FREEFIRE_SG_11500",
-    "FREEFIRE_SG_Weekly_Lite",
-    "FREEFIRE_SG_Weekly_Membership",
-    "FREEFIRE_SG_Monthly_Membership"
+    # Diamond Packs
+    "FREEFIRE_SGMY_25",
+    "FREEFIRE_SGMY_100",
+    "FREEFIRE_SGMY_310",
+    "FREEFIRE_SGMY_520",
+    "FREEFIRE_SGMY_1060",
+    "FREEFIRE_SGMY_2180",
+    "FREEFIRE_SGMY_5600",
+    "FREEFIRE_SGMY_11500",
+    
+    # Memberships
+    "FREEFIRE_SGMY_Weekly",
+    "FREEFIRE_SGMY_WeeklyLite",
+    "UNGS_FFSG_Monthly",
+    
+    # Level Up Packages
+    "FREEFIRE_SGMY_Level_Up_Package___Level_6",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_10",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_15",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_20",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_25",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_30"
 ]
 
 # ──────────────────────────────
@@ -34,62 +45,102 @@ ALLOWED_PRODUCTS = [
 
 # Default Admin Prices
 DEFAULT_ADMIN_PRICES = {
-    "FREEFIRE_SG_Weekly_Lite": 120,
-    "FREEFIRE_SG_Weekly_Membership": 560,
-    "FREEFIRE_SG_Monthly_Membership": 2650,
-    "FREEFIRE_SG_25": 100,
-    "FREEFIRE_SG_100": 286,
-    "FREEFIRE_SG_310": 880,
-    "FREEFIRE_SG_520": 1340,
-    "FREEFIRE_SG_1060": 2650,
-    "FREEFIRE_SG_2180": 5450,
-    "FREEFIRE_SG_5600": 12900,
-    "FREEFIRE_SG_11500": 25900
+    # Memberships (SG MY)
+    "FREEFIRE_SGMY_WeeklyLite": 100,
+    "FREEFIRE_SGMY_Weekly": 500,
+    "UNGS_FFSG_Monthly": 2600,
+    
+    # Diamond Packs (SG MY)
+    "FREEFIRE_SGMY_25": 85,
+    "FREEFIRE_SGMY_100": 300,
+    "FREEFIRE_SGMY_310": 950,
+    "FREEFIRE_SGMY_520": 1450,
+    "FREEFIRE_SGMY_1060": 2800,
+    "FREEFIRE_SGMY_2180": 5500,
+    "FREEFIRE_SGMY_5600": 13200,
+    "FREEFIRE_SGMY_11500": 26500,
+    
+    # Level Up Packages
+    "FREEFIRE_SGMY_Level_Up_Package___Level_6": 100,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_10": 220,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_15": 220,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_20": 220,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_25": 250,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_30": 290
 }
 
 # Default Customer Prices
 DEFAULT_CUSTOMER_PRICES = {
-    "FREEFIRE_SG_Weekly_Lite": 135,
-    "FREEFIRE_SG_Weekly_Membership": 575,
-    "FREEFIRE_SG_Monthly_Membership": 2750,
-    "FREEFIRE_SG_25": 120,
-    "FREEFIRE_SG_100": 300,
-    "FREEFIRE_SG_310": 940,
-    "FREEFIRE_SG_520": 1420,
-    "FREEFIRE_SG_1060": 2710,
-    "FREEFIRE_SG_2180": 5540,
-    "FREEFIRE_SG_5600": 13100,
-    "FREEFIRE_SG_11500": 26200
+    # Memberships (SG MY)
+    "FREEFIRE_SGMY_WeeklyLite": 135,
+    "FREEFIRE_SGMY_Weekly": 575,
+    "UNGS_FFSG_Monthly": 2750,
+    
+    # Diamond Packs (SG MY)
+    "FREEFIRE_SGMY_25": 120,
+    "FREEFIRE_SGMY_100": 350,
+    "FREEFIRE_SGMY_310": 1050,
+    "FREEFIRE_SGMY_520": 1600,
+    "FREEFIRE_SGMY_1060": 3100,
+    "FREEFIRE_SGMY_2180": 6200,
+    "FREEFIRE_SGMY_5600": 14500,
+    "FREEFIRE_SGMY_11500": 28000,
+    
+    # Level Up Packages (Customer Prices)
+    "FREEFIRE_SGMY_Level_Up_Package___Level_6": 110,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_10": 250,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_15": 250,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_20": 250,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_25": 280,
+    "FREEFIRE_SGMY_Level_Up_Package___Level_30": 330
 }
 
 # Product display names
 PRODUCT_DISPLAY_NAMES = {
-    "FREEFIRE_SG_Weekly_Lite": "Weekly Lite",
-    "FREEFIRE_SG_Weekly_Membership": "Weekly Membership",
-    "FREEFIRE_SG_Monthly_Membership": "Monthly Membership",
-    "FREEFIRE_SG_25": "25",
-    "FREEFIRE_SG_100": "100",
-    "FREEFIRE_SG_310": "310",
-    "FREEFIRE_SG_520": "520",
-    "FREEFIRE_SG_1060": "1060",
-    "FREEFIRE_SG_2180": "2180",
-    "FREEFIRE_SG_5600": "5600",
-    "FREEFIRE_SG_11500": "11500"
+    # SG MY Products
+    "FREEFIRE_SGMY_WeeklyLite": "Weekly Lite",
+    "FREEFIRE_SGMY_Weekly": "Weekly Membership",
+    "UNGS_FFSG_Monthly": "Monthly Membership",
+    "FREEFIRE_SGMY_25": "25",
+    "FREEFIRE_SGMY_100": "100",
+    "FREEFIRE_SGMY_310": "310",
+    "FREEFIRE_SGMY_520": "520",
+    "FREEFIRE_SGMY_1060": "1060",
+    "FREEFIRE_SGMY_2180": "2180",
+    "FREEFIRE_SGMY_5600": "5600",
+    "FREEFIRE_SGMY_11500": "11500",
+    
+    # Level Up Packages
+    "FREEFIRE_SGMY_Level_Up_Package___Level_6": "Level 6",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_10": "Level 10",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_15": "Level 15",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_20": "Level 20",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_25": "Level 25",
+    "FREEFIRE_SGMY_Level_Up_Package___Level_30": "Level 30"
 }
 
 # Product codes for /id command (short codes)
 PRODUCT_CODE_SHORT = {
-    "weekly": "FREEFIRE_SG_Weekly_Membership",
-    "weekly_lite": "FREEFIRE_SG_Weekly_Lite",
-    "monthly": "FREEFIRE_SG_Monthly_Membership",
-    "25": "FREEFIRE_SG_25",
-    "100": "FREEFIRE_SG_100",
-    "310": "FREEFIRE_SG_310",
-    "520": "FREEFIRE_SG_520",
-    "1060": "FREEFIRE_SG_1060",
-    "2180": "FREEFIRE_SG_2180",
-    "5600": "FREEFIRE_SG_5600",
-    "11500": "FREEFIRE_SG_11500"
+    # SG MY Products
+    "weekly": "FREEFIRE_SGMY_Weekly",
+    "lite": "FREEFIRE_SGMY_WeeklyLite",
+    "monthly": "UNGS_FFSG_Monthly",
+    "25": "FREEFIRE_SGMY_25",
+    "100": "FREEFIRE_SGMY_100",
+    "310": "FREEFIRE_SGMY_310",
+    "520": "FREEFIRE_SGMY_520",
+    "1060": "FREEFIRE_SGMY_1060",
+    "2180": "FREEFIRE_SGMY_2180",
+    "5600": "FREEFIRE_SGMY_5600",
+    "11500": "FREEFIRE_SGMY_11500",
+    
+    # Level Up Packages
+    "level6": "FREEFIRE_SGMY_Level_Up_Package___Level_6",
+    "level10": "FREEFIRE_SGMY_Level_Up_Package___Level_10",
+    "level15": "FREEFIRE_SGMY_Level_Up_Package___Level_15",
+    "level20": "FREEFIRE_SGMY_Level_Up_Package___Level_20",
+    "level25": "FREEFIRE_SGMY_Level_Up_Package___Level_25",
+    "level30": "FREEFIRE_SGMY_Level_Up_Package___Level_30"
 }
 
 class ProductManager:
