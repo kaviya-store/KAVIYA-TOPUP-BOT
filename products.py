@@ -46,101 +46,101 @@ ALLOWED_PRODUCTS = [
 # Default Admin Prices
 DEFAULT_ADMIN_PRICES = {
     # Memberships (SG MY)
-    "FREEFIRE_SGMY_WeeklyLite": 100,
-    "FREEFIRE_SGMY_Weekly": 500,
+    "_SGMY_WeeklyLite": 100,
+    "_SGMY_Weekly": 500,
     "UNGS_FFSG_Monthly": 2600,
     
     # Diamond Packs (SG MY)
-    "FREEFIRE_SGMY_25": 85,
-    "FREEFIRE_SGMY_100": 300,
-    "FREEFIRE_SGMY_310": 950,
-    "FREEFIRE_SGMY_520": 1450,
-    "FREEFIRE_SGMY_1060": 2800,
-    "FREEFIRE_SGMY_2180": 5500,
-    "FREEFIRE_SGMY_5600": 13200,
-    "FREEFIRE_SGMY_11500": 26500,
+    "_SGMY_25": 85,
+    "_SGMY_100": 300,
+    "_SGMY_310": 950,
+    "_SGMY_520": 1450,
+    "_SGMY_1060": 2800,
+    "_SGMY_2180": 5500,
+    "_SGMY_5600": 13200,
+    "_SGMY_11500": 26500,
     
     # Level Up Packages
-    "FREEFIRE_SGMY_Level_Up_Package___Level_6": 100,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_10": 220,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_15": 220,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_20": 220,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_25": 250,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_30": 290
+    "_SGMY_Level_Up_Package___Level_6": 100,
+    "_SGMY_Level_Up_Package___Level_10": 220,
+    "_SGMY_Level_Up_Package___Level_15": 220,
+    "_SGMY_Level_Up_Package___Level_20": 220,
+    "_SGMY_Level_Up_Package___Level_25": 250,
+    "_SGMY_Level_Up_Package___Level_30": 290
 }
 
 # Default Customer Prices
 DEFAULT_CUSTOMER_PRICES = {
     # Memberships (SG MY)
-    "FREEFIRE_SGMY_WeeklyLite": 135,
-    "FREEFIRE_SGMY_Weekly": 575,
+    "_SGMY_WeeklyLite": 135,
+    "_SGMY_Weekly": 575,
     "UNGS_FFSG_Monthly": 2750,
     
     # Diamond Packs (SG MY)
-    "FREEFIRE_SGMY_25": 120,
-    "FREEFIRE_SGMY_100": 350,
-    "FREEFIRE_SGMY_310": 1050,
-    "FREEFIRE_SGMY_520": 1600,
-    "FREEFIRE_SGMY_1060": 3100,
-    "FREEFIRE_SGMY_2180": 6200,
-    "FREEFIRE_SGMY_5600": 14500,
-    "FREEFIRE_SGMY_11500": 28000,
+    "_SGMY_25": 120,
+    "_SGMY_100": 350,
+    "_SGMY_310": 1050,
+    "_SGMY_520": 1600,
+    "_SGMY_1060": 3100,
+    "_SGMY_2180": 6200,
+    "_SGMY_5600": 14500,
+    "_SGMY_11500": 28000,
     
     # Level Up Packages (Customer Prices)
-    "FREEFIRE_SGMY_Level_Up_Package___Level_6": 110,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_10": 250,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_15": 250,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_20": 250,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_25": 280,
-    "FREEFIRE_SGMY_Level_Up_Package___Level_30": 330
+    "_SGMY_Level_Up_Package___Level_6": 110,
+    "_SGMY_Level_Up_Package___Level_10": 250,
+    "_SGMY_Level_Up_Package___Level_15": 250,
+    "_SGMY_Level_Up_Package___Level_20": 250,
+    "_SGMY_Level_Up_Package___Level_25": 280,
+    "_SGMY_Level_Up_Package___Level_30": 330
 }
 
 # Product display names
 PRODUCT_DISPLAY_NAMES = {
     # SG MY Products
-    "FREEFIRE_SGMY_WeeklyLite": "Weekly Lite",
-    "FREEFIRE_SGMY_Weekly": "Weekly Membership",
+    "_SGMY_WeeklyLite": "Weekly Lite",
+    "_SGMY_Weekly": "Weekly Membership",
     "UNGS_FFSG_Monthly": "Monthly Membership",
-    "FREEFIRE_SGMY_25": "25",
-    "FREEFIRE_SGMY_100": "100",
-    "FREEFIRE_SGMY_310": "310",
-    "FREEFIRE_SGMY_520": "520",
-    "FREEFIRE_SGMY_1060": "1060",
-    "FREEFIRE_SGMY_2180": "2180",
-    "FREEFIRE_SGMY_5600": "5600",
-    "FREEFIRE_SGMY_11500": "11500",
+    "_SGMY_25": "25",
+    "_SGMY_100": "100",
+    "_SGMY_310": "310",
+    "_SGMY_520": "520",
+    "_SGMY_1060": "1060",
+    "_SGMY_2180": "2180",
+    "_SGMY_5600": "5600",
+    "_SGMY_11500": "11500",
     
     # Level Up Packages
-    "FREEFIRE_SGMY_Level_Up_Package___Level_6": "Level 6",
-    "FREEFIRE_SGMY_Level_Up_Package___Level_10": "Level 10",
-    "FREEFIRE_SGMY_Level_Up_Package___Level_15": "Level 15",
-    "FREEFIRE_SGMY_Level_Up_Package___Level_20": "Level 20",
-    "FREEFIRE_SGMY_Level_Up_Package___Level_25": "Level 25",
-    "FREEFIRE_SGMY_Level_Up_Package___Level_30": "Level 30"
+    "_SGMY_Level_Up_Package___Level_6": "Level 6",
+    "_SGMY_Level_Up_Package___Level_10": "Level 10",
+    "_SGMY_Level_Up_Package___Level_15": "Level 15",
+    "_SGMY_Level_Up_Package___Level_20": "Level 20",
+    "_SGMY_Level_Up_Package___Level_25": "Level 25",
+    "_SGMY_Level_Up_Package___Level_30": "Level 30"
 }
 
 # Product codes for /id command (short codes)
 PRODUCT_CODE_SHORT = {
     # SG MY Products
-    "weekly": "FREEFIRE_SGMY_Weekly",
-    "lite": "FREEFIRE_SGMY_WeeklyLite",
+    "weekly": "_SGMY_Weekly",
+    "lite": "_SGMY_WeeklyLite",
     "monthly": "UNGS_FFSG_Monthly",
-    "25": "FREEFIRE_SGMY_25",
-    "100": "FREEFIRE_SGMY_100",
-    "310": "FREEFIRE_SGMY_310",
-    "520": "FREEFIRE_SGMY_520",
-    "1060": "FREEFIRE_SGMY_1060",
-    "2180": "FREEFIRE_SGMY_2180",
-    "5600": "FREEFIRE_SGMY_5600",
-    "11500": "FREEFIRE_SGMY_11500",
+    "25": "_SGMY_25",
+    "100": "_SGMY_100",
+    "310": "_SGMY_310",
+    "520": "_SGMY_520",
+    "1060": "_SGMY_1060",
+    "2180": "_SGMY_2180",
+    "5600": "_SGMY_5600",
+    "11500": "_SGMY_11500",
     
     # Level Up Packages
-    "level6": "FREEFIRE_SGMY_Level_Up_Package___Level_6",
-    "level10": "FREEFIRE_SGMY_Level_Up_Package___Level_10",
-    "level15": "FREEFIRE_SGMY_Level_Up_Package___Level_15",
-    "level20": "FREEFIRE_SGMY_Level_Up_Package___Level_20",
-    "level25": "FREEFIRE_SGMY_Level_Up_Package___Level_25",
-    "level30": "FREEFIRE_SGMY_Level_Up_Package___Level_30"
+    "level6": "_SGMY_Level_Up_Package___Level_6",
+    "level10": "_SGMY_Level_Up_Package___Level_10",
+    "level15": "_SGMY_Level_Up_Package___Level_15",
+    "level20": "_SGMY_Level_Up_Package___Level_20",
+    "level25": "_SGMY_Level_Up_Package___Level_25",
+    "level30": "_SGMY_Level_Up_Package___Level_30"
 }
 
 class ProductManager:
@@ -261,12 +261,12 @@ class ProductManager:
         """Get full product code from short code"""
         return self.short_codes.get(short_code.lower())
     
-    async def fetch_products(self, game_code: str = "freefire_sg") -> Dict:
+    async def fetch_products(self, game_code: str = "freefire_sgmy") -> Dict:
         """
         Fetch products from Bay2Game API (only for product IDs and status)
         
         Args:
-            game_code: Game code (default: freefire_sg)
+            game_code: Game code (default: freefire_sgmy)
         
         Returns:
             Dict containing game info and products
@@ -394,7 +394,7 @@ class ProductManager:
         except:
             return False
     
-    async def get_products(self, game_code: str = "freefire_sg", user_id: int = None, force_refresh: bool = False) -> Dict:
+    async def get_products(self, game_code: str = "freefire_sgmy", user_id: int = None, force_refresh: bool = False) -> Dict:
         """
         Get products with caching - only allowed products
         
@@ -516,13 +516,13 @@ product_manager = ProductManager()
 # Utility Functions (for bot use)
 # ──────────────────────────────
 
-async def get_game_products(game_code: str = "freefire_sg", user_id: int = None) -> Dict:
+async def get_game_products(game_code: str = "freefire_sgmy", user_id: int = None) -> Dict:
     """Get products for a specific game with user-specific prices"""
     return await product_manager.get_products(game_code, user_id)
 
 async def get_freefire_products(user_id: int = None) -> Dict:
     """Get FreeFire SG products specifically (filtered) with user-specific prices"""
-    return await product_manager.get_products("freefire_sg", user_id)
+    return await product_manager.get_products("freefire_sgmy", user_id)
 
 def format_products_for_display(products_data: Dict, limit: int = 20) -> str:
     """
@@ -652,10 +652,10 @@ async def test_products():
         if test_user:
             user_id = test_user.get("userId")
             is_admin = test_user.get("isAdmin", False)
-            price = product_manager.get_product_price("FREEFIRE_SG_25", user_id)
+            price = product_manager.get_product_price("FREEFIRE_SGMY_25", user_id)
             print(f"├ User ID: {user_id}")
             print(f"├ Is Admin: {is_admin}")
-            print(f"└ Price for FREEFIRE_SG_25: Rs. {price:,.0f}")
+            print(f"└ Price for FREEFIRE_SGMY_25: Rs. {price:,.0f}")
         else:
             print("No users found in database")
     except Exception as e:
