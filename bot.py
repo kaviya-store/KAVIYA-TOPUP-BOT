@@ -190,36 +190,42 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text += f"👤 Role: {user_role}\n"
     text += "━━━━━━━━━━━━━━━\n\n"
     
+    # ===== MEMBERSHIPS =====
     if membership_products:
         text += "🔹 Subscriptions\n"
         for p in membership_products:
-            name = p.get('name', 'Unknown')
+            # ✅ product_code එකෙන් display_name එක ගන්න
+            code = p.get('product_code', '')
+            display_name = get_product_display_name(code)
             price = p.get('sell_price_lkr', 0)
-            text += f"- {name} ⇒ {price:.0f} LKR\n"
+            text += f"├ {display_name} ⇒ {price:.0f} LKR\n"
         text += "\n"
     
+    # ===== DIAMOND PACKS =====
     if diamond_products:
         text += "🔹 Diamond Packages\n"
         for p in diamond_products:
-            name = p.get('name', 'Unknown')
-            price = p.get('sell_price_lkr', 0)
+            # ✅ product_code එකෙන් display_name එක ගන්න
             code = p.get('product_code', '')
-            game_code = get_game_code(code)
-        text += f"- {name} ⇒ {price:.0f} LKR\n"
-
+            display_name = get_product_display_name(code)
+            price = p.get('sell_price_lkr', 0)
+            text += f"├ {display_name} ⇒ {price:.0f} LKR\n"
+        text += "\n"
+    
+    # ===== LEVEL UP PACKAGES =====
     if level_up_products:
         text += "🔹 Level Up Packages\n"
         for p in level_up_products:
-            name = p.get('name', 'Unknown')
-            price = p.get('sell_price_lkr', 0)
+            # ✅ display name එක product_code එකෙන් ගන්න
             code = p.get('product_code', '')
-            game_code = get_game_code(code)
-            text += f"- {name} ⇒ {price:.0f} LKR\n"
+            display_name = get_product_display_name(code)
+            price = p.get('sell_price_lkr', 0)
+            text += f"├ {display_name} ⇒ {price:.0f} LKR\n"
         text += "\n"
     
     text += "\n━━━━━━━━━━━━━━━\n"
     text += "✅ Easy | Fast | Secure\n"
-    text += "📌 Example: /topup 4507576164 monthly 2"
+    text += "📌 Example: /topup 4507576164 weekly 2"
     
     await loading_msg.edit_text(text)
 
@@ -273,23 +279,23 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"❌ Unknown product: {product_key}\n\n"
                 "Available products:\n"
-                "├ weekly - Weekly (SG MY)\n"
-                "├ weekly_lite - Weekly Lite (SG MY)\n"
-                "├ monthly - Monthly (SG MY)\n"
-                "├ 25 - 25 (SG MY)\n"
-                "├ 100 - 100 (SG MY)\n"
-                "├ 310 - 310 (SG MY)\n"
-                "├ 520 - 520 (SG MY)\n"
-                "├ 1060 - 1060 (SG MY)\n"
-                "├ 2180 - 2180 (SG MY)\n"
-                "├ 5600 - 5600 (SG MY)\n"
-                "├ 11500 - 11500 (SG MY)\n"
-                "├ level6 - Level 6\n"
-                "├ level10 - Level 10\n"
-                "├ level15 - Level 15\n"
-                "├ level20 - Level 20\n"
-                "├ level25 - Level 25\n"
-                "└ level30 - Level 30"
+                "weekly - Weekly (SG MY)\n"
+                "weekly_lite - Weekly Lite (SG MY)\n"
+                "monthly - Monthly (SG MY)\n"
+                "25 - 25 (SG MY)\n"
+                "100 - 100 (SG MY)\n"
+                "310 - 310 (SG MY)\n"
+                "520 - 520 (SG MY)\n"
+                "3060 - 1060 (SG MY)\n"
+                "2180 - 2180 (SG MY)\n"
+                "5600 - 5600 (SG MY)\n"
+                "11500 - 11500 (SG MY)\n"
+                "level6 - Level 6\n"
+                "level10 - Level 10\n"
+                "level15 - Level 15\n"
+                "level20 - Level 20\n"
+                "level25 - Level 25\n"
+                "level30 - Level 30"
             )
             return
     
@@ -1032,15 +1038,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"└ 📅 Joined: {db_user['createdAt'][:10]}\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
         "📌 Available Commands:\n"
-        "├ /profile\n"
-        "├ /store\n"
-        "├ /topup\n"
+        "├ /wallet\n"
+        "├ /products\n"
+        "├ /id\n"
         "├ /deposit\n"
         "├ /verify\n"
         "├ /orders\n"
         "└ /history\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "💡 Example: /topup 4507576164 sg25 2"
+        "💡 Example: /id 4507576164 sg25 2"
     )
     
     await update.message.reply_text(welcome_text)
@@ -1266,9 +1272,9 @@ def main():
     app.add_handler(deposit_handler)
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("profile", wallet_command))
-    app.add_handler(CommandHandler("store", store_command))
-    app.add_handler(CommandHandler("topup", topup_command))
+    app.add_handler(CommandHandler("wallet", wallet_command))
+    app.add_handler(CommandHandler("products", store_command))
+    app.add_handler(CommandHandler("id", topup_command))
     app.add_handler(CommandHandler("orders", orders_command))
     app.add_handler(CommandHandler("history", history_command))
     app.add_handler(CommandHandler("verify", verify_command))
