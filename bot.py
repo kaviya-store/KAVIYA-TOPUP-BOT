@@ -225,7 +225,7 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     text += "\n━━━━━━━━━━━━━━━\n"
     text += "✅ Easy | Fast | Secure\n"
-    text += "📌 Example: /topup 4507576164 weekly 2"
+    text += "📌 Example: /id 4507576164 weekly 2"
     
     await loading_msg.edit_text(text)
 
