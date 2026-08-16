@@ -1046,7 +1046,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "├ /orders\n"
         "└ /history\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "💡 Example: /id 4507576164 sg25 2"
+        "💡 Example: /id 4507576164 weekly 2"
     )
     
     await update.message.reply_text(welcome_text)
