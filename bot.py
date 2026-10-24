@@ -457,8 +457,9 @@ async def confirm_topup_callback(update: Update, context: ContextTypes.DEFAULT_T
     context.user_data.clear()
     
     if success_orders:
-        success_text = f"{player_name}\n"
-        success_text += f"{product_display} {emoji}✅ {player_id} 🆔✅"
+        # ✅ New success message format (product instead of player ID)
+        success_text = "Kaviya Store\n"
+        success_text += f"{product_display}  {emoji}   ✅ {quantity}x Done 🆔{emoji}✅"
         
         if failed_count > 0:
             success_text += f"\n\n⚠️ {failed_count} orders failed."
