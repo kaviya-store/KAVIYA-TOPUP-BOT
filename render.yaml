@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: zanta-tele-bot
+    env: python
+    buildCommand: |
+      pip install --no-cache-dir -r requirements.txt
+    startCommand: |
+      python bot.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
