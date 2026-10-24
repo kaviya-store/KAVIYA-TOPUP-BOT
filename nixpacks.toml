@@ -1,2 +1,17 @@
 [phases.setup]
-aptPkgs = ["ffmpeg"]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
+
+[phases.build]
+cmds = ["echo 'Build completed'"]
+
+[phases.start]
+cmds = ["python bot.py"]
+
+[build]
+install = ["pip install --no-cache-dir -r requirements.txt"]
+
+[start]
+cmd = "python bot.py"
