@@ -234,7 +234,7 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ──────────────────────────────
 
 async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle topup command: /topup <player_id> <product> <quantity>"""
+    """Handle topup command: /id <player_id> <product> <quantity> — instant process"""
     user_id = update.effective_user.id
     args = context.args
     
@@ -248,13 +248,21 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(args) < 2:
         await update.message.reply_text(
             "❌ Invalid format!\n\n"
-            "Example: /topup 4507576164 monthly 2"
+            "Example: /id 4507576164 monthly 2"
         )
         return
     
     player_id = args[0]
     product_key = args[1].lower()
-    quantity = int(args[2]) if len(args) > 2 else 1
+    
+    # ✅ Safe quantity parsing
+    try:
+        quantity = int(args[2]) if len(args) > 2 else 1
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Invalid quantity! Please enter a number (1-5)."
+        )
+        return
     
     if not player_id.isdigit():
         await update.message.reply_text(
@@ -262,9 +270,9 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    if quantity < 1 or quantity > 10:
+    if quantity < 1 or quantity > 5:
         await update.message.reply_text(
-            "❌ Quantity must be between 1 and 10."
+            "❌ Quantity must be between 1 and 5."
         )
         return
     
@@ -280,13 +288,13 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"❌ Unknown product: {product_key}\n\n"
                 "Available products:\n"
                 "weekly - Weekly (SG MY)\n"
-                "weekly_lite - Weekly Lite (SG MY)\n"
+                "lite - Weekly Lite (SG MY)\n"
                 "monthly - Monthly (SG MY)\n"
                 "25 - 25 (SG MY)\n"
                 "100 - 100 (SG MY)\n"
                 "310 - 310 (SG MY)\n"
                 "520 - 520 (SG MY)\n"
-                "3060 - 1060 (SG MY)\n"
+                "1060 - 1060 (SG MY)\n"
                 "2180 - 2180 (SG MY)\n"
                 "5600 - 5600 (SG MY)\n"
                 "11500 - 11500 (SG MY)\n"
@@ -326,116 +334,14 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    processing_msg = await update.message.reply_text(
-        "🔄 Verifying Player ID..."
-    )
-    
-    try:
-        verify_url = f"https://zanta-store.vercel.app/api/verify-ffid?playerId={player_id}"
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(verify_url)
-            data = response.json()
-            
-            if not data.get("success") or not data.get("player", {}).get("verified"):
-                await processing_msg.delete()
-                await update.message.reply_text(
-                    "❌ Player ID verification failed!\n\n"
-                    "Please check the Player ID and try again."
-                )
-                return
-            
-            player_name = data["player"].get("playerName", "Unknown")
-            await processing_msg.delete()
-            
-            context.user_data['topup_data'] = {
-                'player_id': player_id,
-                'player_name': player_name,
-                'product_code': product_code,
-                'product_name': product.get('name'),
-                'quantity': quantity,
-                'price': price_lkr,
-                'total': total_price,
-                'balance': balance
-            }
-            
-            product_display = get_product_display_name(product_code)
-            emoji = get_product_emoji(product_code)
-            
-            confirm_text = (
-                f"┌────────────┐\n"
-                f"║  User     : {player_name}\n"
-                f"║  UID      : {player_id}\n"
-                f"└────────────┘\n"
-                f"{product_display} {emoji}   ✅ x{quantity}\n"
-                f"┌────────────┐\n"
-                f"║  Total   : {total_price:.0f}\n"
-                f"║  Balance : {balance:.0f}\n"
-                f"║  After   : {balance - total_price:.0f}\n"
-                f"└────────────┘\n\n"
-                f"✅ Confirm your purchase?"
-            )
-            
-            keyboard = [
-                [
-                    InlineKeyboardButton("✅ Confirm", callback_data="confirm_topup"),
-                    InlineKeyboardButton("❌ Cancel", callback_data="cancel_topup")
-                ]
-            ]
-            
-            await update.message.reply_text(
-                confirm_text,
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            
-    except Exception as e:
-        await processing_msg.delete()
-        await update.message.reply_text(
-            f"❌ Error verifying player ID: {str(e)}\n\n"
-            "Please try again later."
-        )
-
-# ──────────────────────────────
-# Confirm Topup Callback
-# ──────────────────────────────
-
-async def confirm_topup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Confirm and process topup"""
-    query = update.callback_query
-    await query.answer()
-    
-    user_id = query.from_user.id
-    data = context.user_data.get('topup_data', {})
-    
-    if not data:
-        await query.message.edit_text(
-            "❌ Session expired. Please start again with /id"
-        )
-        return
-    
-    player_id = data.get('player_id')
-    player_name = data.get('player_name')
-    product_code = data.get('product_code')
-    quantity = data.get('quantity')
-    
-    await query.message.edit_text(
-        "⏳ Processing your order... Please wait."
-    )
+    # ✅ Auto-process the order (no verify, no processing message)
+    product_id = product.get('id')
+    product_display = get_product_display_name(product_code)
+    emoji = get_product_emoji(product_code)
+    user_display_name = update.effective_user.first_name or "Customer"
     
     success_orders = []
     failed_count = 0
-    
-    # Get product with user-specific price
-    product_obj = product_manager.get_product_by_code(product_code, user_id)
-    if not product_obj:
-        await query.message.edit_text(
-            "❌ Product not found. Please try again."
-        )
-        return
-    
-    product_id = product_obj.get('id')
-    product_display = get_product_display_name(product_code)
-    emoji = get_product_emoji(product_code)
     
     for i in range(quantity):
         result = await process_product_purchase(
@@ -447,36 +353,31 @@ async def confirm_topup_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         if result.get("success"):
-            order = result.get("order", {})
-            order['quantity'] = 1
-            order['playerName'] = player_name
-            success_orders.append(order)
+            success_orders.append(result.get("order", {}))
         else:
             failed_count += 1
     
-    context.user_data.clear()
-    
     if success_orders:
-        # ✅ New success message format (product instead of player ID)
-        success_text = "Kaviya Store\n"
+        success_text = f"{user_display_name}\n"
         success_text += f"{product_display}  {emoji}   ✅ {quantity}x Done 🆔{emoji}✅"
         
         if failed_count > 0:
             success_text += f"\n\n⚠️ {failed_count} orders failed."
         
-        await query.message.edit_text(success_text)
+        await update.message.reply_text(success_text)
     else:
-        await query.message.edit_text(
-            "❌ All orders failed. Please try again later."
+        # ✅ Error message if all failed
+        error_detail = ""
+        if failed_count > 0:
+            error_detail = "\n\nPlease check the Player ID and try again."
+        
+        await update.message.reply_text(
+            f"❌ Order failed!{error_detail}\n\n"
+            f"🆔 Player ID: {player_id}\n"
+            f"📦 Product: {product_display}\n"
+            f"🔢 Quantity: {quantity}"
         )
 
-async def cancel_topup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancel topup"""
-    query = update.callback_query
-    await query.answer()
-    
-    context.user_data.clear()
-    await query.message.edit_text("❌ Purchase cancelled.")
 
 # ──────────────────────────────
 # DEPOSIT COMMAND
@@ -1206,11 +1107,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     
-    if data == "confirm_topup":
-        await confirm_topup_callback(update, context)
-    elif data == "cancel_topup":
-        await cancel_topup_callback(update, context)
-    elif data.startswith("method_"):
+    if data.startswith("method_"):
         await method_selection_callback(update, context)
     else:
         await query.answer()
