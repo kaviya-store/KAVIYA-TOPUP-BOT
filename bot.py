@@ -194,7 +194,6 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if membership_products:
         text += "🔹 Subscriptions\n"
         for p in membership_products:
-            # ✅ product_code එකෙන් display_name එක ගන්න
             code = p.get('product_code', '')
             display_name = get_product_display_name(code)
             price = p.get('sell_price_lkr', 0)
@@ -205,7 +204,6 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if diamond_products:
         text += "🔹 Diamond Packages\n"
         for p in diamond_products:
-            # ✅ product_code එකෙන් display_name එක ගන්න
             code = p.get('product_code', '')
             display_name = get_product_display_name(code)
             price = p.get('sell_price_lkr', 0)
@@ -216,7 +214,6 @@ async def store_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if level_up_products:
         text += "🔹 Level Up Packages\n"
         for p in level_up_products:
-            # ✅ display name එක product_code එකෙන් ගන්න
             code = p.get('product_code', '')
             display_name = get_product_display_name(code)
             price = p.get('sell_price_lkr', 0)
@@ -377,6 +374,9 @@ async def topup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📦 Product: {product_display}\n"
             f"🔢 Quantity: {quantity}"
         )
+# ──────────────────────────────
+# Confirm Topup Callback
+# ──────────────────────────────
 
 
 # ──────────────────────────────
@@ -929,26 +929,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         db_user = db.get_user(user.id)
     
+    # ✅ New welcome message
     welcome_text = (
-        f"👋 Hey {user.first_name}!\n"
-        "🎉 Welcome to ✨ 𝐀𝐝𝐦𝐢𝐧 𝐊𝐚𝐯𝐢𝐲𝐚 𝐈𝐝 𝐓𝐨𝐩 𝐔𝐩 𝐂𝐞𝐧𝐭𝐞𝐫💎✨!\n\n"
-        "📱 Your Account Details:\n"
-        f"├ 🆔 ID: {user.id}\n"
-        f"├ 👤 Name: {user.first_name}\n"
-        f"├ 💰 Balance: {db_user['balance']:.2f} LKR\n"
-        f"├ 📦 Orders: {db_user.get('totalOrders', 0)}\n"
-        f"└ 📅 Joined: {db_user['createdAt'][:10]}\n\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "📌 Available Commands:\n"
-        "├ /wallet\n"
-        "├ /products\n"
-        "├ /id\n"
-        "├ /deposit\n"
-        "├ /verify\n"
-        "├ /orders\n"
-        "└ /history\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "💡 Example: /id 4507576164 weekly 2"
+        "𝐖𝐞𝐥𝐜𝐨𝐦𝐞 𝐓𝐨 𝐊𝐚𝐯𝐢𝐲𝐚 𝐎𝐮𝐭𝐨 𝐓𝐨𝐩 𝐔𝐩 𝐁𝐨𝐭\n\n"
+        "📌 User Commands ( Register උනාට පසු ඔබට භාවිතා කළ හැකි විධාන)\n\n"
+        "/start - Bot එක start කරන්න.\n"
+        "/wallet - ඔබේ wallet balance එක බලන්න.\n"
+        "/deposit - Payment Methode ටික බලන්න.\n"
+        "/id [quantity] - Free Fire account එක top-up කරන්න (උදා: /id 12345678 Weekly 1). Max quantity: 5.\n"
+        "/products - Available products සහ prices බලන්න.\n"
+        "/verify rn - ez cash සල්ලි දාල ඒක ඔයාගෙ wallet එකට තනියම add කරගන්න පුලුවන්. (උදා: /verify 20251215205511)\n"
+        "/history - All Deposit History\n"
+        "/oders - All Oders\n\n"
+        "Ez Cash Number - 0768747350\n"
+        "Binance Id - 774894425\n\n"
+        "Binance payment කරල wallet එකට funds add කරගන්න ඔන්නම් receipt එක whatsapp කරන්න අපි manually add කරල දෙනව ✅"
     )
     
     await update.message.reply_text(welcome_text)
@@ -991,7 +986,7 @@ async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not orders:
         await update.message.reply_text(
-            "📦 No orders found.\n\nStart shopping with /topup!"
+            "📦 No orders found.\n\nStart shopping with /id!"
         )
         return
     
@@ -1119,7 +1114,7 @@ flask_app = Flask(__name__)
 
 @flask_app.route('/')
 def health_check():
-    return "🤖 Zanta TopUp Bot is running!", 200
+    return "🤖 Kaviya Outo Top Up Bot is running!", 200
 
 @flask_app.route('/health')
 def health():
@@ -1189,7 +1184,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     
     print("=" * 50)
-    print("🤖 TopUp Bot is running...")
+    print("🤖 Kaviya Outo Top Up Bot is running...")
     print("📊 MongoDB: Connected")
     print("🎮 Bay2Game API: Connected")
     print("☁️ Cloudinary: Connected")
@@ -1198,9 +1193,9 @@ def main():
     print("✅ Bot is ready! Press Ctrl+C to stop.")
     print("=" * 50)
     print("\n📌 Available Commands:")
-    print("  /profile     - View wallet/profile")
-    print("  /store       - View products")
-    print("  /topup       - Buy products")
+    print("  /wallet      - View wallet/profile")
+    print("  /products    - View products")
+    print("  /id          - Buy products")
     print("  /deposit     - Deposit money (send screenshot)")
     print("  /verify      - Deposit using RN number")
     print("  /orders      - Order history")
